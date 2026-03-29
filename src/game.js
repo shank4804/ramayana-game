@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Game — main loop + state machine
 // States: title → playing → level_complete → (next level or win) → game_over
-// Architecture mirrors pixel-agents: officeState ↔ Level,  gameLoop ↔ Game
+// Main game loop and state management
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Game {
@@ -219,7 +219,7 @@ class Game {
     ctx.fillStyle   = 'rgba(255,255,255,0.2)';
     ctx.font        = `9px monospace`;
     ctx.textAlign   = 'right';
-    ctx.fillText('Inspired by pixel-agents', CANVAS_W - 8, CANVAS_H - 8);
+    ctx.fillText('v1.0', CANVAS_W - 8, CANVAS_H - 8);
   }
 
   // ── Level complete screen ──────────────────────────────────────────────────

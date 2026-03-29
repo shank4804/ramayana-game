@@ -51,7 +51,7 @@ const FIREBALL_SPEED             = 3.0;
 const WALK_FRAME_DUR   = 0.12;   // seconds per walk frame
 const IDLE_BOB_SPEED   = 2.0;    // bob cycles per second
 
-// ─── Color palette (pixel-agents dark aesthetic) ──────────────────────────────
+// ─── Color palette ───────────────────────────────────────────────────────────
 const C = {
   // Background / UI
   BG:           '#0d0d1a',

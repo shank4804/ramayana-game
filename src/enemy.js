@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Enemies — Rakshasa, Guard, Ravana boss
-// FSM: patrol | chase | attack | stunned  (pixel-agents character pattern)
+// FSM: patrol | chase | attack | stunned
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Enemy {
@@ -31,7 +31,7 @@ class Enemy {
         this.damage   = 1;
     }
 
-    // State machine (pixel-agents style: IDLE→PATROL→CHASE)
+    // State machine
     this.state       = 'patrol';
     this.dir         = 'down';
     this.frame       = 0;
@@ -43,7 +43,7 @@ class Enemy {
     this.patrolAxis  = Math.random() < 0.5 ? 'h' : 'v';
     this.pauseTimer  = 0;
 
-    // BFS path following (pixel-agents pattern)
+    // BFS path following
     this.path        = [];
     this.pathTimer   = 0;   // recalculate path every N seconds
 
@@ -150,7 +150,7 @@ class Enemy {
     const startTile = tilemap.tileAt(this.x, this.y);
     const goalTile  = tilemap.tileAt(player.x, player.y);
 
-    // Recalculate BFS path periodically (pixel-agents pattern)
+    // Recalculate BFS path periodically
     if (this.pathTimer <= 0 || this.path.length === 0) {
       this.path = tilemap.findPath(
         startTile.col, startTile.row,

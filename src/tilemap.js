@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TileMap — grid world + BFS pathfinding (adapted from pixel-agents)
+// TileMap — grid world + BFS pathfinding
 // All positions stored as tile coordinates; rendering converts via TILE.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ class TileMap {
   }
 
   // BFS — returns array of {col,row} from start (exclusive) to goal (inclusive)
-  // or null if unreachable.  Borrowed directly from pixel-agents tileMap.ts.
+  // or null if unreachable.
   findPath(startCol, startRow, goalCol, goalRow) {
     if (startCol === goalCol && startRow === goalRow) return [];
 

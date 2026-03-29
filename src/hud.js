@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // HUD — health hearts, level name, score, controls hint
-// Styled like pixel-agents' panel overlays: semi-transparent dark panes + gold text
+// Semi-transparent dark panes + gold text
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HUD = {

@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Player — Rama
-// State machine: idle | walk | shoot  (mirrors pixel-agents character FSM)
+// State machine: idle | walk | shoot
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Player {
@@ -14,7 +14,7 @@ class Player {
     this.vx = 0;
     this.vy = 0;
 
-    // State machine (pixel-agents style)
+    // State machine
     this.state     = 'idle';   // 'idle' | 'walk' | 'shoot'
     this.dir       = 'down';   // 'down' | 'up' | 'left' | 'right'
     this.frame     = 0;
@@ -72,7 +72,7 @@ class Player {
       const nx = this.x + (mx / len) * speed;
       const ny = this.y + (my / len) * speed;
 
-      // Axis-separated collision (same approach as pixel-agents)
+      // Axis-separated collision
       if (this._canMoveTo(nx, this.y, tilemap)) this.x = nx;
       if (this._canMoveTo(this.x, ny, tilemap)) this.y = ny;
 

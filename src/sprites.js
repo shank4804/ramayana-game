@@ -11,7 +11,7 @@ function px(ctx, col, row, w, h, color) {
 }
 
 // Draw a full sprite from a 2-D color array (string[][]) — same format as
-// pixel-agents SpriteData.  '' / null = transparent.
+// SpriteData format: '' / null = transparent.
 function drawSpriteData(ctx, data, offX = 0, offY = 0) {
   for (let row = 0; row < data.length; row++) {
     for (let col = 0; col < data[row].length; col++) {
@@ -490,7 +490,7 @@ function drawHeart(ctx, x, y, filled) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SPEECH BUBBLE  (pixel-agents style)
+// SPEECH BUBBLE
 // ─────────────────────────────────────────────────────────────────────────────
 
 function drawSpeechBubble(ctx, cx, cy, text) {

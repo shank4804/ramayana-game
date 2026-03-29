@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Input — keyboard + mouse state, modelled after pixel-agents key handling
+// Input — keyboard + mouse state
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Input = {

@@ -284,7 +284,7 @@ class Level {
       ctx.restore();
     });
 
-    // Enemies (sorted by Y so lower = in front, like pixel-agents)
+    // Enemies (sorted by Y so lower = in front)
     const drawables = [this.player, ...this.enemies].sort((a, b) => a.y - b.y);
     drawables.forEach(e => e.draw(ctx));
 
