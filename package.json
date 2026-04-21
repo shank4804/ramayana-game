@@ -3,9 +3,17 @@
   "version": "1.0.0",
   "description": "Ramayana — pixel-art top-down game where you play as Rama",
   "scripts": {
-    "start": "npx serve . -p 3000",
-    "dev": "npx live-server --port=3000 --open=index.html"
+    "start": "python3 dev_server.py",
+    "dev": "python3 dev_server.py"
   },
-  "keywords": ["game", "ramayana", "pixel-art", "canvas"],
-  "license": "MIT"
+  "keywords": [
+    "game",
+    "ramayana",
+    "pixel-art",
+    "canvas"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.160.0"
+  }
 }

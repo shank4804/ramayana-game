@@ -3,23 +3,111 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ramayana</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Ramayana: Third-Person Prototype</title>
+  <link rel="stylesheet" href="style.css?v=20260412b" />
 </head>
 <body>
-  <div id="game-container">
-    <canvas id="game-canvas" width="800" height="608"></canvas>
+  <div id="app-root">
+    <div id="hud">
+      <div id="brand-card" class="card">
+        <div class="eyebrow">Ramayana 3D</div>
+        <h1 id="chapter-title">Ayodhya</h1>
+        <p id="objective-text">Drive through the eastern gate.</p>
+      </div>
+
+      <div id="status-card" class="card compact">
+        <div class="label-row">
+          <span>Health</span>
+          <span id="health-value">100 / 100</span>
+        </div>
+        <div class="meter">
+          <div id="health-fill" class="meter-fill"></div>
+        </div>
+        <div class="status-row">
+          <span>Enemies</span>
+          <strong id="enemy-value">0</strong>
+        </div>
+        <div class="status-row">
+          <span>Mode</span>
+          <strong id="mode-value">On Foot</strong>
+        </div>
+        <div class="status-row">
+          <span>Weapon</span>
+          <strong id="weapon-value">Blade</strong>
+        </div>
+        <div class="status-row">
+          <span>Speed</span>
+          <strong id="speed-value">0</strong>
+        </div>
+      </div>
+
+      <div id="radar-card" class="card compact">
+        <div class="eyebrow">Radar</div>
+        <canvas id="radar" width="220" height="220"></canvas>
+      </div>
+
+      <div id="controls-card" class="card compact">
+        <div class="eyebrow">Controls</div>
+        <p>Click the world to lock the camera. `WASD` or arrow keys move, `Shift` sprint, `F` enter or exit the chariot.</p>
+        <p>`LMB` sword. Hold `RMB` to aim. `LMB` or `K` while aiming shoots the bow. `Space` dodges.</p>
+        <p>`Q/E` orbit fallback, wheel zoom, `Enter` advances story panels.</p>
+      </div>
+    </div>
+
+    <div id="prompt" class="prompt hidden">Press F to enter the royal chariot</div>
+
+    <div id="overlay" class="overlay hidden">
+      <div class="overlay-panel">
+        <div class="eyebrow" id="overlay-eyebrow">Ramayana</div>
+        <h2 id="overlay-title">The Exile Begins</h2>
+        <div id="overlay-speaker" class="overlay-speaker hidden">Narrator</div>
+        <p id="overlay-body">A new third-person journey begins.</p>
+        <p id="overlay-hint" class="overlay-hint hidden">Press Enter to continue</p>
+
+        <div id="menu-buttons" class="menu-buttons hidden">
+          <button id="menu-new-game" class="menu-button">New Game</button>
+          <button id="menu-load-game" class="menu-button">Load Game</button>
+          <button id="menu-settings" class="menu-button secondary">Settings</button>
+          <button id="menu-exit" class="menu-button secondary">Exit</button>
+        </div>
+
+        <div id="settings-panel" class="settings-panel hidden">
+          <label class="setting-row">
+            <span>Look Sensitivity</span>
+            <input id="setting-sensitivity" type="range" min="0.6" max="1.8" step="0.05" value="1" />
+          </label>
+          <label class="setting-row">
+            <span>Graphics</span>
+            <select id="setting-quality">
+              <option value="medium">Medium</option>
+              <option value="high" selected>High</option>
+              <option value="epic">Epic</option>
+            </select>
+          </label>
+          <label class="setting-row checkbox-row">
+            <span>Invert Look Y</span>
+            <input id="setting-invert-y" type="checkbox" />
+          </label>
+        </div>
+
+        <div id="overlay-actions" class="actions">
+          <button id="primary-action">Continue</button>
+          <button id="secondary-action" class="secondary hidden">Secondary</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="crosshair" class="hidden">
+      <span></span>
+      <span></span>
+    </div>
+
+    <div id="toast" class="toast hidden">Mission Updated</div>
   </div>
 
-  <script src="src/constants.js"></script>
-  <script src="src/sprites.js"></script>
-  <script src="src/input.js"></script>
-  <script src="src/tilemap.js"></script>
-  <script src="src/projectile.js"></script>
-  <script src="src/player.js"></script>
-  <script src="src/enemy.js"></script>
-  <script src="src/level.js"></script>
-  <script src="src/hud.js"></script>
-  <script src="src/game.js"></script>
+  <script type="module" src="src/bootstrap.js?v=20260412c"></script>
 </body>
 </html>
