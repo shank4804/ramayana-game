@@ -8,6 +8,7 @@ const COLS        = Math.floor(CANVAS_W / TILE);   // 16
 const ROWS        = Math.floor(CANVAS_H / TILE);   // 12
 const CHAR_W      = 16;         // character sprite width  (sprite px)
 const CHAR_H      = 24;         // character sprite height (sprite px)
+const VIEW_MODE   = 'third_person';
 
 // ─── Tile types ───────────────────────────────────────────────────────────────
 const T_FLOOR   = 0;
@@ -20,6 +21,8 @@ const T_PILLAR  = 6;
 
 // ─── Game states ──────────────────────────────────────────────────────────────
 const STATE_TITLE          = 'title';
+const STATE_CHAPTER_INTRO  = 'chapter_intro';
+const STATE_CUTSCENE       = 'cutscene';
 const STATE_PLAYING        = 'playing';
 const STATE_LEVEL_COMPLETE = 'level_complete';
 const STATE_GAME_OVER      = 'game_over';
@@ -39,8 +42,9 @@ const GUARD_SPEED       = 1.9;
 const RAVANA_SPEED      = 1.2;
 const CHASE_DIST        = 6;        // tiles
 const ATTACK_DIST       = 0.65;     // tiles
-const PATROL_PAUSE_MIN  = 1.0;
-const PATROL_PAUSE_MAX  = 2.5;
+const PATROL_PAUSE_MIN       = 1.0;
+const PATROL_PAUSE_MAX       = 2.5;
+const ENEMY_DAMAGE_COOLDOWN  = 0.8;   // seconds between contact damage ticks
 
 // ─── Ravana boss ──────────────────────────────────────────────────────────────
 const RAVANA_MAX_HP              = 10;
@@ -122,4 +126,5 @@ const C = {
   HP_EMPTY:     '#2a1010',
   HUD_TEXT:     '#ffd700',
   HUD_BG:       'rgba(0,0,0,0.6)',
+  SHADOW:       'rgba(0,0,0,0.3)',
 };

@@ -4,10 +4,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HUD = {
-  draw(ctx, player, levelIndex, levelName, score) {
+  draw(ctx, player, chapterIndex, chapterName, score, roomName) {
     // ── Top-left panel ────────────────────────────────────────────────────
     const panelW = 180;
-    const panelH = 52;
+    const panelH = 60;
     const px2    = 10;
     const py2    = 10;
 
@@ -25,11 +25,18 @@ const HUD = {
     ctx.font        = `bold 11px 'Courier New', monospace`;
     ctx.textAlign   = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(`Level ${levelIndex + 1}: ${levelName}`, px2 + 8, py2 + 6);
+    ctx.fillText(`Ch ${chapterIndex + 1}: ${chapterName}`, px2 + 8, py2 + 6);
+
+    // Room name (smaller, below chapter name)
+    if (roomName) {
+      ctx.fillStyle = C.GOLD;
+      ctx.font = `9px 'Courier New', monospace`;
+      ctx.fillText(roomName, px2 + 8, py2 + 18);
+    }
 
     // Hearts
     for (let i = 0; i < PLAYER_MAX_HP; i++) {
-      drawHeart(ctx, px2 + 8 + i * (7 * SCALE + 2), py2 + 22, i < player.hp);
+      drawHeart(ctx, px2 + 8 + i * (7 * SCALE + 2), py2 + 30, i < player.hp);
     }
 
     // ── Score (top-right) ─────────────────────────────────────────────────
