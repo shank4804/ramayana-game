@@ -12,12 +12,11 @@ import { createChariot, updateChariot, enterChariot, exitChariot } from './entit
 import { createPlayer, updatePlayer, updatePlayerAnimation, doDodge, damagePlayer } from './entities/player.js';
 import { doSwordAttack } from './combat/sword.js';
 import { fireArrow, spawnEnemyOrb, updateProjectiles, updateEnemyProjectiles } from './combat/bow.js';
+import { HUD } from './ui/hud.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
 const VEHICLE_RADIUS = 2.55;
-const RADAR_RANGE = 90;
-
 const TMP_A = new THREE.Vector3();
 const TMP_B = new THREE.Vector3();
 
@@ -239,7 +238,6 @@ class Ramayana3DGame {
     this.keys = this.input.keys;
     this.mouseButtons = this.input.mouseButtons;
     this.pointer = this.input.pointer;
-    this.toastTimer = 0;
     this.uiMode = 'title';
     this.overlayMode = 'menu';
     this.menuIndex = 0;
@@ -275,6 +273,21 @@ class Ramayana3DGame {
     this._buildWorld();
     this._syncSettingsUI();
     this._applySettings();
+    this.hud = new HUD({
+      chapterTitle: this.chapterTitle,
+      objectiveText: this.objectiveText,
+      healthFill: this.healthFill,
+      healthValue: this.healthValue,
+      enemyValue: this.enemyValue,
+      modeValue: this.modeValue,
+      weaponValue: this.weaponValue,
+      speedValue: this.speedValue,
+      prompt: this.prompt,
+      radarCanvas: this.radarCanvas,
+      radarCtx: this.radarCtx,
+      toastEl: this.toast,
+    });
+
     this._bindEvents();
     this._showTitle();
     this._updateHUD();
@@ -762,9 +775,7 @@ class Ramayana3DGame {
   }
 
   _setMarker(position, visible) {
-    this.marker.position.copy(position);
-    this.marker.position.y = 0.35;
-    this.marker.visible = visible;
+    this.hud.setMarker(this.marker, position, visible);
   }
 
   _animate() {
@@ -775,10 +786,7 @@ class Ramayana3DGame {
   }
 
   _update(dt) {
-    if (this.toastTimer > 0) {
-      this.toastTimer -= dt;
-      if (this.toastTimer <= 0) this.toast.classList.add('hidden');
-    }
+    this.hud.tick(dt);
 
     this._updateCamera(dt);
     this._updateRadar();
@@ -1044,116 +1052,19 @@ class Ramayana3DGame {
   }
 
   _updateInteractionPrompt() {
-    if (this.uiMode !== 'playing') {
-      this.prompt.classList.add('hidden');
-      return;
-    }
-
-    if (this.player.inVehicle) {
-      this.prompt.textContent = 'Press F to leave the royal chariot';
-      this.prompt.classList.remove('hidden');
-      return;
-    }
-
-    const nearVehicle = this.player.group.position.distanceTo(this.vehicle.group.position) <= 5.2;
-    if (nearVehicle) {
-      this.prompt.textContent = 'Press F to enter the royal chariot';
-      this.prompt.classList.remove('hidden');
-    } else {
-      this.prompt.classList.add('hidden');
-    }
+    this.hud.updateInteractionPrompt(this.player, this.vehicle, this.uiMode);
   }
 
   _updateHUD() {
-    const objective = this.missionState === 'combat'
-      ? `Clear the area in ${this.activeMission.chapter}.`
-      : this.activeMission.objective;
-
-    this.chapterTitle.textContent = `${this.activeMission.chapter}`;
-    this.objectiveText.textContent = objective;
-    this.healthValue.textContent = `${Math.round(this.player.hp)} / ${this.player.maxHp}`;
-    this.healthFill.style.width = `${(this.player.hp / this.player.maxHp) * 100}%`;
-    this.enemyValue.textContent = `${this.enemies.filter(enemy => enemy.alive).length}`;
-    this.modeValue.textContent = this.player.inVehicle ? 'Royal Chariot' : 'On Foot';
-    this.weaponValue.textContent = this.player.inVehicle ? 'Driving' : (this.isAiming ? 'Bow' : 'Blade');
-    this.speedValue.textContent = `${Math.round(this.player.inVehicle ? Math.abs(this.vehicle.speed) * 8 : Math.hypot(this.player.velocity.x, this.player.velocity.z))}`;
+    this.hud.update(this);
   }
 
   _updateRadar() {
-    const ctx = this.radarCtx;
-    const { width, height } = this.radarCanvas;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = width * 0.42;
-    const worldPos = this.player.inVehicle ? this.vehicle.group.position : this.player.group.position;
-    const heading = this.player.inVehicle ? this.vehicle.group.rotation.y : this.player.group.rotation.y;
-
-    ctx.clearRect(0, 0, width, height);
-
-    ctx.fillStyle = 'rgba(5, 10, 18, 0.92)';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(229, 185, 83, 0.35)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 1;
-    for (let ring = 1; ring <= 2; ring++) {
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, (radius / 3) * ring, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    const drawPoint = (target, color, size, clampToEdge) => {
-      const dx = target.x - worldPos.x;
-      const dz = target.z - worldPos.z;
-      const localX = dx * Math.cos(-heading) - dz * Math.sin(-heading);
-      const localZ = dx * Math.sin(-heading) + dz * Math.cos(-heading);
-      const distance = Math.hypot(localX, localZ);
-      let scale = radius / RADAR_RANGE;
-      let drawX = localX;
-      let drawZ = localZ;
-      if (distance > RADAR_RANGE && clampToEdge) {
-        const factor = (RADAR_RANGE * 0.92) / distance;
-        drawX *= factor;
-        drawZ *= factor;
-      }
-      const px = centerX + drawX * scale;
-      const py = centerY + drawZ * scale;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, size, 0, Math.PI * 2);
-      ctx.fill();
-    };
-
-    drawPoint(this.activeMission.marker, '#f0c56a', 4.8, true);
-    this.enemies.forEach(enemy => {
-      if (enemy.alive) drawPoint(enemy.group.position, '#ff6a5b', 3.8, true);
-    });
-    drawPoint(this.vehicle.group.position, '#9dc8ff', 4.2, true);
-
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.fillStyle = '#ffffff';
-    ctx.rotate(-heading);
-    ctx.beginPath();
-    ctx.moveTo(0, -10);
-    ctx.lineTo(6, 8);
-    ctx.lineTo(-6, 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    this.hud.updateRadar(this.player, this.vehicle, this.enemies, this.activeMission);
   }
 
   _toast(message) {
-    this.toast.textContent = message;
-    this.toast.classList.remove('hidden');
-    this.toastTimer = 2.4;
+    this.hud.toast(message);
   }
 
   _hasSave() {
