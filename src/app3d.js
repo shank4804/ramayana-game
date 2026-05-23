@@ -14,6 +14,7 @@ import { doSwordAttack } from './combat/sword.js';
 import { fireArrow, spawnEnemyOrb, updateProjectiles, updateEnemyProjectiles } from './combat/bow.js';
 import { HUD } from './ui/hud.js';
 import { Overlay, normalizeSceneLine } from './ui/overlay.js';
+import { TitleMenu } from './ui/menu.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -288,6 +289,16 @@ class Ramayana3DGame {
       secondaryAction: this.secondaryAction,
     });
 
+    this.menu = new TitleMenu({
+      menuNewGame: this.menuNewGame,
+      menuLoadGame: this.menuLoadGame,
+      menuSettings: this.menuSettings,
+      menuExit: this.menuExit,
+      sensitivityInput: this.sensitivityInput,
+      qualityInput: this.qualityInput,
+      invertYInput: this.invertYInput,
+    });
+
     this.hud = new HUD({
       chapterTitle: this.chapterTitle,
       objectiveText: this.objectiveText,
@@ -318,9 +329,7 @@ class Ramayana3DGame {
   }
 
   _syncSettingsUI() {
-    this.sensitivityInput.value = String(this.settings.lookSensitivity);
-    this.qualityInput.value = this.settings.quality;
-    this.invertYInput.checked = this.settings.invertLookY;
+    this.menu.syncSettingsUI(this.settings);
   }
 
   _applySettings() {
@@ -531,44 +540,14 @@ class Ramayana3DGame {
       return;
     }
 
-    const buttons = this._menuButtons();
-    if (buttons.length === 0) return;
-
-    if (event.code === 'ArrowDown' || event.code === 'KeyS') {
-      event.preventDefault();
-      this.menuIndex = (this.menuIndex + 1) % buttons.length;
-      this._focusMenuButton();
-      return;
-    }
-
-    if (event.code === 'ArrowUp' || event.code === 'KeyW') {
-      event.preventDefault();
-      this.menuIndex = (this.menuIndex - 1 + buttons.length) % buttons.length;
-      this._focusMenuButton();
-      return;
-    }
-
-    if (event.code === 'Enter' || event.code === 'Space') {
-      event.preventDefault();
-      buttons[this.menuIndex]?.click();
-    }
-  }
-
-  _menuButtons() {
-    return [this.menuNewGame, this.menuLoadGame, this.menuSettings, this.menuExit]
-      .filter(button => !button.disabled);
+    this.menu.handleKey(event);
+    this.menuIndex = this.menu.index;
   }
 
   _focusMenuButton() {
-    [this.menuNewGame, this.menuLoadGame, this.menuSettings, this.menuExit].forEach(button => {
-      button.classList.remove('is-active');
-    });
-    const buttons = this._menuButtons();
-    const clampedIndex = THREE.MathUtils.clamp(this.menuIndex, 0, Math.max(buttons.length - 1, 0));
-    this.menuIndex = clampedIndex;
-    buttons.forEach((button, index) => {
-      button.classList.toggle('is-active', index === this.menuIndex);
-    });
+    this.menu.index = this.menuIndex;
+    this.menu.focus();
+    this.menuIndex = this.menu.index;
   }
 
   _showTitle() {
