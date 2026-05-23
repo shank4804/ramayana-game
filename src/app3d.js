@@ -7,6 +7,9 @@ import { installLighting } from './engine/lighting.js';
 import { updateThirdPersonCamera } from './engine/camera.js';
 import * as decor from './world/decor.js';
 import { buildAyodhya } from './world/ayodhya.js';
+import { buildForest } from './world/forest.js';
+import { buildKishkindha } from './world/kishkindha.js';
+import { buildLanka } from './world/lanka.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -585,9 +588,9 @@ class Ramayana3DGame {
 
     this._buildRoadNetwork();
     buildAyodhya(this.scene, this.colliderRegistry);
-    this._buildForestDistrict();
-    this._buildKishkindhaDistrict();
-    this._buildLankaDistrict();
+    buildForest(this.scene, this.colliderRegistry, this.decor);
+    buildKishkindha(this.scene, this.colliderRegistry);
+    buildLanka(this.scene, this.colliderRegistry);
     this._buildBackdrop();
   }
 
@@ -606,92 +609,6 @@ class Ramayana3DGame {
     for (let z = -18; z <= 138; z += 16) {
       this._addLaneMark(118, z, 0.5, 6);
     }
-  }
-
-  _buildForestDistrict() {
-    const safeSpots = [
-      { x: -26, z: 54, r: 20 },
-      { x: 34, z: 18, r: 18 },
-      { x: -58, z: 18, r: 14 },
-    ];
-
-    for (let row = 0; row < 6; row++) {
-      for (let col = 0; col < 8; col++) {
-        const x = -66 + col * 14 + (row % 2 ? 4 : -2);
-        const z = 18 + row * 16 + ((row * 7 + col * 5) % 4);
-        const blocked = safeSpots.some(spot => Math.hypot(x - spot.x, z - spot.z) < spot.r);
-        if (blocked) continue;
-        this._addTree(x, z, 1.5 + (col % 3) * 0.2, 7 + (row % 3));
-      }
-    }
-
-    const camp = new THREE.Mesh(
-      new THREE.CylinderGeometry(0, 5.2, 4.2, 4),
-      new THREE.MeshStandardMaterial({ color: 0x9d6d3d, roughness: 0.86 }),
-    );
-    camp.rotation.y = Math.PI / 4;
-    camp.position.set(34, 2.1, 18);
-    camp.castShadow = true;
-    this.decor.add(camp);
-
-    const fire = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xffa548 }),
-    );
-    fire.position.set(34, 0.7, 18);
-    this.decor.add(fire);
-
-    const fireLight = new THREE.PointLight(0xffa04a, 1.5, 22, 2);
-    fireLight.position.copy(fire.position);
-    this.scene.add(fireLight);
-
-    this._addRuin(10, 22, 9, 9, 5);
-    this._addRuin(48, 12, 8, 8, 4.5);
-  }
-
-  _buildKishkindhaDistrict() {
-    const rockMaterial = 0x77644d;
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 5; col++) {
-        const x = 56 + col * 14 + (row % 2 ? 5 : -2);
-        const z = -86 + row * 14 + ((row * 9 + col * 3) % 4);
-        const size = 4.8 + ((row + col) % 3) * 1.2;
-        this._addRock(x, z, size, rockMaterial);
-      }
-    }
-
-    this._addBridge(56, -10, 28, 6);
-    this._addBridge(82, -28, 32, 6);
-    this._addBanner(70, -42, 0xcf8134);
-    this._addBanner(90, -62, 0xcf8134);
-  }
-
-  _buildLankaDistrict() {
-    const wall = 0x6d2e22;
-    this._addWall(124, 42, 48, 4, 12, wall);
-    this._addWall(104, 62, 4, 44, 12, wall);
-    this._addWall(144, 62, 4, 44, 12, wall);
-    this._addWall(124, 82, 48, 4, 12, wall);
-
-    [
-      [104, 42],
-      [144, 42],
-      [104, 82],
-      [144, 82],
-    ].forEach(([x, z]) => this._addTower(x, z, 5.4, 15, 0x7a3424, 0x9f562a));
-
-    this._addBuilding(158, 114, 44, 34, 18, 0x33191b, 0x7a3726, false);
-    this._addBuilding(126, 34, 18, 16, 10, 0x58221e, 0x944b38, true);
-    this._addBuilding(150, 30, 14, 14, 9, 0x58221e, 0x944b38, true);
-
-    [
-      [114, 38],
-      [136, 38],
-      [114, 86],
-      [136, 86],
-      [154, 94],
-      [154, 134],
-    ].forEach(([x, z]) => this._addTorch(x, z));
   }
 
   _buildBackdrop() {
