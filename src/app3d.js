@@ -9,6 +9,7 @@ import * as decor from './world/decor.js';
 import { World } from './world/world.js';
 import { createEnemy, updateEnemies, clearEnemies, spawnMissionEnemies } from './entities/enemy.js';
 import { createChariot, updateChariot, enterChariot, exitChariot } from './entities/chariot.js';
+import { createPlayer, updatePlayer, updatePlayerAnimation, doDodge, damagePlayer } from './entities/player.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -256,7 +257,7 @@ class Ramayana3DGame {
     this.scene.add(this.decor);
     this.settings = this._loadSettings();
 
-    this.player = this._createPlayer();
+    this.player = createPlayer(MISSION_ORDER[0].spawn);
     this.scene.add(this.player.group);
 
     this.vehicle = createChariot(MISSION_ORDER[0].vehicleSpawn, MISSION_ORDER[0].vehicleYaw);
@@ -309,131 +310,6 @@ class Ramayana3DGame {
     }
   }
 
-  _createPlayer() {
-    const group = new THREE.Group();
-    group.position.copy(MISSION_ORDER[0].spawn);
-
-    const clothMaterial = new THREE.MeshStandardMaterial({ color: 0x295ec0, roughness: 0.72, metalness: 0.06 });
-    const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xe4bb8a, roughness: 0.8 });
-    const accentMaterial = new THREE.MeshStandardMaterial({ color: 0xdca749, roughness: 0.5, metalness: 0.32 });
-    const darkMaterial = new THREE.MeshStandardMaterial({ color: 0x322414, roughness: 0.85 });
-
-    const hips = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.55), clothMaterial);
-    hips.castShadow = true;
-    hips.position.y = 1.05;
-    group.add(hips);
-
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.3, 0.66), clothMaterial);
-    torso.castShadow = true;
-    torso.position.y = 1.93;
-    group.add(torso);
-
-    const sash = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.07, 8, 28), accentMaterial);
-    sash.rotation.x = Math.PI / 2;
-    sash.position.y = 1.62;
-    group.add(sash);
-
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 18), skinMaterial);
-    head.castShadow = true;
-    head.position.y = 2.98;
-    group.add(head);
-
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.37, 18, 18), darkMaterial);
-    hair.castShadow = true;
-    hair.position.y = 3.04;
-    hair.scale.set(1.02, 0.86, 1.02);
-    hair.position.z = -0.05;
-    group.add(hair);
-
-    const leftArm = new THREE.Group();
-    leftArm.position.set(-0.72, 2.32, 0);
-    const leftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.05, 0.24), skinMaterial);
-    leftArmMesh.castShadow = true;
-    leftArmMesh.position.y = -0.48;
-    leftArm.add(leftArmMesh);
-    group.add(leftArm);
-
-    const rightArm = new THREE.Group();
-    rightArm.position.set(0.72, 2.32, 0);
-    const rightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.05, 0.24), skinMaterial);
-    rightArmMesh.castShadow = true;
-    rightArmMesh.position.y = -0.48;
-    rightArm.add(rightArmMesh);
-    group.add(rightArm);
-
-    const leftLeg = new THREE.Group();
-    leftLeg.position.set(-0.26, 0.9, 0);
-    const leftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.2, 0.3), darkMaterial);
-    leftLegMesh.castShadow = true;
-    leftLegMesh.position.y = -0.58;
-    leftLeg.add(leftLegMesh);
-    group.add(leftLeg);
-
-    const rightLeg = new THREE.Group();
-    rightLeg.position.set(0.26, 0.9, 0);
-    const rightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.2, 0.3), darkMaterial);
-    rightLegMesh.castShadow = true;
-    rightLegMesh.position.y = -0.58;
-    rightLeg.add(rightLegMesh);
-    group.add(rightLeg);
-
-    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.04, 6, 24, Math.PI), accentMaterial);
-    bow.rotation.z = Math.PI / 2;
-    bow.position.set(0.78, 1.95, -0.12);
-    group.add(bow);
-
-    const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.8, 10), darkMaterial);
-    quiver.castShadow = true;
-    quiver.rotation.z = 0.34;
-    quiver.position.set(-0.44, 1.9, -0.34);
-    group.add(quiver);
-
-    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 0.12), accentMaterial);
-    sword.castShadow = true;
-    sword.position.set(-0.58, 1.24, 0.1);
-    sword.rotation.z = 0.22;
-    group.add(sword);
-
-    const shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(0.85, 24),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 }),
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.03;
-    group.add(shadow);
-
-    return {
-      group,
-      hp: 100,
-      maxHp: 100,
-      radius: PLAYER_RADIUS,
-      walkSpeed: 7.5,
-      sprintSpeed: 12.5,
-      velocity: new THREE.Vector3(),
-      moveDir: new THREE.Vector3(0, 0, 1),
-      swordCooldown: 0,
-      bowCooldown: 0,
-      dodgeCooldown: 0,
-      invulnerable: 0,
-      attackTime: 0,
-      bowPose: 0,
-      dodgeTime: 0,
-      walkPhase: 0,
-      inVehicle: false,
-      parts: {
-        torso,
-        hips,
-        head,
-        hair,
-        leftArm,
-        rightArm,
-        leftLeg,
-        rightLeg,
-        sword,
-        bow,
-      },
-    };
-  }
 
 
   _createMissionMarker() {
@@ -938,52 +814,12 @@ class Ramayana3DGame {
   }
 
   _updatePlayer(dt) {
-    if (this._isPressed('KeyQ')) this.cameraYaw += dt * 1.65;
-    if (this._isPressed('KeyE')) this.cameraYaw -= dt * 1.65;
-
-    const inputX = (this._isPressed('KeyD', 'ArrowRight') ? 1 : 0) - (this._isPressed('KeyA', 'ArrowLeft') ? 1 : 0);
-    const inputY = (this._isPressed('KeyW', 'ArrowUp') ? 1 : 0) - (this._isPressed('KeyS', 'ArrowDown') ? 1 : 0);
-    const input = new THREE.Vector2(inputX, inputY);
-
-    const forward = new THREE.Vector3(-Math.sin(this.cameraYaw), 0, -Math.cos(this.cameraYaw));
-    const right = new THREE.Vector3(Math.cos(this.cameraYaw), 0, -Math.sin(this.cameraYaw));
-    const move = new THREE.Vector3();
-
-    if (input.lengthSq() > 0) {
-      input.normalize();
-      move.addScaledVector(right, input.x).addScaledVector(forward, input.y).normalize();
-      this.player.moveDir.copy(move);
-    }
-
-    const targetSpeed = input.lengthSq() > 0
-      ? (this._isPressed('ShiftLeft', 'ShiftRight') ? this.player.sprintSpeed : this.player.walkSpeed)
-      : 0;
-
-    const desiredVelocity = move.multiplyScalar(targetSpeed);
-    this.player.velocity.x = damp(this.player.velocity.x, desiredVelocity.x, input.lengthSq() > 0 ? 12 : 9, dt);
-    this.player.velocity.z = damp(this.player.velocity.z, desiredVelocity.z, input.lengthSq() > 0 ? 12 : 9, dt);
-
-    if (this.player.dodgeTime > 0) {
-      this.player.velocity.addScaledVector(this.player.moveDir, dt * 4.6);
-    }
-
-    TMP_A.copy(this.player.group.position);
-    TMP_B.copy(this.player.velocity).multiplyScalar(dt);
-    this._moveBody(TMP_A, TMP_B, this.player.radius);
-    this.player.group.position.copy(TMP_A);
-
-    const horizontalSpeed = Math.hypot(this.player.velocity.x, this.player.velocity.z);
-    if (horizontalSpeed > 0.2) {
-      this.player.walkPhase += dt * horizontalSpeed * 0.95;
-    }
-
-    const aimYaw = Math.atan2(forward.x, forward.z);
-    if (this.isAiming) {
-      this.player.group.rotation.y = dampAngle(this.player.group.rotation.y, aimYaw, 18, dt);
-    } else if (horizontalSpeed > 0.25) {
-      const moveYaw = Math.atan2(this.player.velocity.x, this.player.velocity.z);
-      this.player.group.rotation.y = dampAngle(this.player.group.rotation.y, moveYaw, 15, dt);
-    }
+    updatePlayer(this.player, dt, {
+      isPressed: (...codes) => this.input.isPressed(...codes),
+      isAiming: this.isAiming,
+      colliders: this.colliderRegistry,
+      state: this,
+    });
   }
 
   _updateVehicle(dt) {
@@ -1003,11 +839,7 @@ class Ramayana3DGame {
   }
 
   _doDodge() {
-    if (this.player.inVehicle || this.player.dodgeCooldown > 0) return;
-    this.player.dodgeCooldown = 0.85;
-    this.player.dodgeTime = 1;
-    this.player.invulnerable = Math.max(this.player.invulnerable, 0.28);
-    this.player.velocity.addScaledVector(this.player.moveDir, 8.8);
+    doDodge(this.player);
   }
 
   _doSwordAttack() {
@@ -1172,9 +1004,7 @@ class Ramayana3DGame {
   }
 
   _damagePlayer(amount) {
-    if (this.player.invulnerable > 0) return;
-    this.player.hp = Math.max(0, this.player.hp - amount);
-    this.player.invulnerable = 0.6;
+    if (!damagePlayer(this.player, amount)) return;
     this._toast(`Rama takes ${amount} damage`);
     if (this.player.hp <= 0) {
       this._showOverlay({
@@ -1309,28 +1139,11 @@ class Ramayana3DGame {
   }
 
   _updatePlayerAnimation(dt) {
-    const speed = this.player.inVehicle
-      ? Math.abs(this.vehicle.speed)
-      : Math.hypot(this.player.velocity.x, this.player.velocity.z);
-
-    if (!this.player.inVehicle) {
-      this.player.walkPhase += dt * speed * 0.42;
-    }
-
-    const stride = this.player.inVehicle ? 0 : Math.min(0.75, speed * 0.08);
-    const armSwing = Math.sin(this.player.walkPhase) * stride;
-    const legSwing = Math.sin(this.player.walkPhase) * stride * 1.2;
-
-    this.player.parts.leftLeg.rotation.x = legSwing;
-    this.player.parts.rightLeg.rotation.x = -legSwing;
-
-    const attackSwing = this.player.attackTime > 0 ? -1.2 * this.player.attackTime : 0;
-    const bowPose = this.isAiming || this.player.bowPose > 0 ? 0.7 + this.player.bowPose * 0.3 : 0;
-
-    this.player.parts.leftArm.rotation.x = -armSwing * 0.6 + bowPose * 0.3;
-    this.player.parts.rightArm.rotation.x = armSwing * 0.6 + attackSwing - bowPose;
-    this.player.parts.torso.position.y = 1.93 + Math.sin(this.player.walkPhase * 2) * Math.min(0.08, speed * 0.01);
-    this.player.parts.head.rotation.y = this.isAiming ? Math.sin(this.clock.elapsedTime * 0.7) * 0.08 : 0;
+    updatePlayerAnimation(this.player, dt, {
+      vehicleSpeed: this.vehicle.speed,
+      isAiming: this.isAiming,
+      elapsedTime: this.clock.elapsedTime,
+    });
   }
 
   _updateCamera(dt) {
