@@ -10,6 +10,8 @@ import { buildAyodhya } from './world/ayodhya.js';
 import { buildForest } from './world/forest.js';
 import { buildKishkindha } from './world/kishkindha.js';
 import { buildLanka } from './world/lanka.js';
+import { buildBackdrop } from './world/backdrop.js';
+import { buildRoadNetwork } from './world/roads.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -586,58 +588,12 @@ class Ramayana3DGame {
     this._addGroundPatch(142, 80, 108, 136, 0x5a2422);
     this._addGroundPatch(146, 4, 80, 62, 0x49646f);
 
-    this._buildRoadNetwork();
+    buildRoadNetwork(this.scene, this.colliderRegistry);
     buildAyodhya(this.scene, this.colliderRegistry);
     buildForest(this.scene, this.colliderRegistry, this.decor);
     buildKishkindha(this.scene, this.colliderRegistry);
     buildLanka(this.scene, this.colliderRegistry);
-    this._buildBackdrop();
-  }
-
-  _buildRoadNetwork() {
-    const roadColor = 0x65513e;
-    this._addRoad(-32, -10, 230, 16, roadColor);
-    this._addRoad(-8, 16, 16, 92, roadColor);
-    this._addRoad(48, -10, 104, 16, roadColor);
-    this._addRoad(118, 18, 16, 150, roadColor);
-    this._addRoad(118, 80, 56, 16, roadColor);
-    this._addRoad(150, 98, 16, 78, roadColor);
-
-    for (let x = -150; x <= 146; x += 16) {
-      this._addLaneMark(x, -10, 6, 0.5);
-    }
-    for (let z = -18; z <= 138; z += 16) {
-      this._addLaneMark(118, z, 0.5, 6);
-    }
-  }
-
-  _buildBackdrop() {
-    const sea = new THREE.Mesh(
-      new THREE.PlaneGeometry(260, 120),
-      new THREE.MeshStandardMaterial({ color: 0x3b6b8e, roughness: 0.35, metalness: 0.08 }),
-    );
-    sea.rotation.x = -Math.PI / 2;
-    sea.position.set(174, 0.02, -52);
-    this.scene.add(sea);
-
-    for (let i = 0; i < 10; i++) {
-      const hill = new THREE.Mesh(
-        new THREE.ConeGeometry(18 + i * 2, 24 + i * 1.8, 6),
-        new THREE.MeshStandardMaterial({ color: 0x4b5d75, roughness: 1 }),
-      );
-      hill.castShadow = true;
-      hill.position.set(-188 + i * 42, 12 + i * 0.4, -172 + (i % 2) * 18);
-      this.scene.add(hill);
-    }
-
-    const bridge = new THREE.Mesh(
-      new THREE.BoxGeometry(52, 1.1, 12),
-      new THREE.MeshStandardMaterial({ color: 0xb48f63, roughness: 0.85 }),
-    );
-    bridge.position.set(104, 0.7, -22);
-    bridge.castShadow = true;
-    bridge.receiveShadow = true;
-    this.scene.add(bridge);
+    buildBackdrop(this.scene, this.colliderRegistry);
   }
 
   _addGroundPatch(x, z, width, depth, color) { decor.addGroundPatch(this.scene, this.colliderRegistry, x, z, width, depth, color); }
