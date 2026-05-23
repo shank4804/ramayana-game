@@ -5,9 +5,8 @@ import { ColliderRegistry } from './engine/collision.js';
 import { createRenderer } from './engine/renderer.js';
 import { installLighting } from './engine/lighting.js';
 import { updateThirdPersonCamera } from './engine/camera.js';
-import * as decor from './world/decor.js';
 import { World } from './world/world.js';
-import { createEnemy, updateEnemies, clearEnemies, spawnMissionEnemies } from './entities/enemy.js';
+import { updateEnemies, clearEnemies, spawnMissionEnemies } from './entities/enemy.js';
 import { createChariot, updateChariot, enterChariot, exitChariot } from './entities/chariot.js';
 import { createPlayer, updatePlayer, updatePlayerAnimation, doDodge, damagePlayer } from './entities/player.js';
 import { doSwordAttack } from './combat/sword.js';
@@ -230,25 +229,6 @@ class Ramayana3DGame {
     this.sun = this.lighting.sun;
     this.world = new World();
     this.world.build(this.scene, this.colliderRegistry, this.decor);
-  }
-
-  _addGroundPatch(x, z, width, depth, color) { decor.addGroundPatch(this.scene, this.colliderRegistry, x, z, width, depth, color); }
-  _addRoad(x, z, width, depth, color) { decor.addRoad(this.scene, this.colliderRegistry, x, z, width, depth, color); }
-  _addLaneMark(x, z, width, depth) { decor.addLaneMark(this.scene, this.colliderRegistry, x, z, width, depth); }
-  _addBuilding(x, z, width, depth, height, wallColor, roofColor, solid) { decor.addBuilding(this.scene, this.colliderRegistry, x, z, width, depth, height, wallColor, roofColor, solid); }
-  _addWall(x, z, width, depth, height, color) { decor.addWall(this.scene, this.colliderRegistry, x, z, width, depth, height, color); }
-  _addGateArch(x, z) { decor.addGateArch(this.scene, this.colliderRegistry, x, z); }
-  _addTower(x, z, radius, height, wallColor, roofColor) { decor.addTower(this.scene, this.colliderRegistry, x, z, radius, height, wallColor, roofColor); }
-  _addStreetLamp(x, z) { decor.addStreetLamp(this.scene, this.colliderRegistry, x, z); }
-  _addTorch(x, z) { decor.addTorch(this.scene, this.colliderRegistry, x, z); }
-  _addTree(x, z, radius, height) { decor.addTree(this.scene, this.colliderRegistry, x, z, radius, height); }
-  _addRock(x, z, size, color) { decor.addRock(this.scene, this.colliderRegistry, x, z, size, color); }
-  _addRuin(x, z, width, depth, height) { decor.addRuin(this.scene, this.colliderRegistry, x, z, width, depth, height); }
-  _addBridge(x, z, width, depth) { decor.addBridge(this.scene, this.colliderRegistry, x, z, width, depth); }
-  _addBanner(x, z, color) { decor.addBanner(this.scene, this.colliderRegistry, x, z, color); }
-
-  _registerCollider(x, z, width, depth, padding = 0) {
-    return this.colliderRegistry.register(x, z, width, depth, padding);
   }
 
   _bindEvents() {
@@ -635,14 +615,6 @@ class Ramayana3DGame {
     });
   }
 
-  _moveBody(position, delta, radius) {
-    return this.colliderRegistry.moveBody(position, delta, radius);
-  }
-
-  _resolveCollisions(position, radius) {
-    return this.colliderRegistry.resolveCollisions(position, radius);
-  }
-
   _doDodge() {
     doDodge(this.player);
   }
@@ -680,10 +652,6 @@ class Ramayana3DGame {
       playerInVehicle: this.player.inVehicle,
       damagePlayer: amount => this._damagePlayer(amount),
     });
-  }
-
-  _pointHitsCollider(point, padding) {
-    return this.colliderRegistry.pointHitsCollider(point, padding);
   }
 
   _updateEnemies(dt) {
@@ -786,10 +754,6 @@ class Ramayana3DGame {
   _spawnMissionEnemies(savedEnemies = null) {
     this._clearEnemies();
     this.enemies = spawnMissionEnemies(this.activeMission, savedEnemies, this.scene);
-  }
-
-  _createEnemy(type, position) {
-    return createEnemy(type, position);
   }
 
   _clearEnemies() {
