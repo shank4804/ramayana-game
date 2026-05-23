@@ -3,6 +3,7 @@ import { hasSave, writeSave, readSave, clearSave, loadSettings, saveSettings } f
 import { InputState } from './engine/input.js';
 import { ColliderRegistry } from './engine/collision.js';
 import { createRenderer } from './engine/renderer.js';
+import { installLighting } from './engine/lighting.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -562,19 +563,8 @@ class Ramayana3DGame {
     );
     this.scene.add(sky);
 
-    const hemi = new THREE.HemisphereLight(0xd9e6ff, 0x4b311b, 1.18);
-    this.scene.add(hemi);
-
-    const sun = new THREE.DirectionalLight(0xfff0cf, 2.35);
-    sun.position.set(-75, 110, 60);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -240;
-    sun.shadow.camera.right = 240;
-    sun.shadow.camera.top = 240;
-    sun.shadow.camera.bottom = -240;
-    this.scene.add(sun);
-    this.sun = sun;
+    this.lighting = installLighting(this.scene);
+    this.sun = this.lighting.sun;
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(480, 480),
