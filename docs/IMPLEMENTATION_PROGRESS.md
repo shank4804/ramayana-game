@@ -1,10 +1,10 @@
 # Ramayana Game Implementation Progress
 
-Last updated: 2026-04-19 (afternoon session)
+Last updated: 2026-05-23
 
 This is the handoff file for the next AI agent. Read this first and update it after every meaningful implementation step.
 
-## Handoff Snapshot (2026-04-19, afternoon)
+## Handoff Snapshot (2026-05-23)
 
 The current track is **AAA Phase 1 — Visuals Foundation Vertical Slice**, defined in [`docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`](superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md).
 
@@ -14,7 +14,7 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 
 | # | Step | Status | Plan |
 |---|---|---|---|
-| 1 | Refactor scaffold (split `src/app3d.js` into modules) | Plan written, **not yet executed** | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
+| 1 | Refactor scaffold (split `src/app3d.js` into modules) | **In progress** — engine layer extracted (tasks 1-7 of 23 done) | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
 | 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | Not started | None yet |
 | 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | Not started | None yet |
 | 4 | Character pipeline (Rama GLTF + animation state machine) | Not started | None yet |
@@ -23,7 +23,35 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 | 7 | Polish pass (palette, attribution) | Not started | None yet |
 | 8 | Final verification across quality tiers | Not started | None yet |
 
-**Next AI's job:** execute the Step 1 plan task-by-task. The plan is structured so each task is a single small commit. After Step 1 lands, write a new plan for Step 2 and continue.
+**Next AI's job:** finish Step 1. The engine layer is extracted (`src/engine/save.js`, `input.js`, `collision.js`, `renderer.js`, `lighting.js`, `camera.js`). Remaining work: world/decor extractions (tasks 8-12), entities (13-15), combat (16-17), UI (18-20), missions (21), cleanup (22), docs (23). After Step 1 lands, write a new plan for Step 2 (Asset pipeline) and continue.
+
+**Progress on Step 1 (refactor scaffold):**
+
+- [x] Task 1: extract `engine/save.js`
+- [x] Task 2: extract settings persistence into `engine/save.js`
+- [x] Task 3: extract `engine/input.js`
+- [x] Task 4: extract `engine/collision.js`
+- [x] Task 5: extract `engine/renderer.js`
+- [x] Task 6: extract `engine/lighting.js`
+- [x] Task 7: extract `engine/camera.js`
+- [ ] Task 8: extract `world/decor.js` (shared primitive builders)
+- [ ] Task 9: extract `world/ayodhya.js`
+- [ ] Task 10: extract forest/kishkindha/lanka/ravana districts
+- [ ] Task 11: extract `world/backdrop.js`, `world/roads.js`
+- [ ] Task 12: extract `world/world.js` orchestrator
+- [ ] Task 13: extract `entities/enemy.js`
+- [ ] Task 14: extract `entities/chariot.js`
+- [ ] Task 15: extract `entities/player.js`
+- [ ] Task 16: extract `combat/sword.js`
+- [ ] Task 17: extract `combat/bow.js`
+- [ ] Task 18: extract `ui/hud.js`
+- [ ] Task 19: extract `ui/overlay.js`
+- [ ] Task 20: extract `ui/menu.js`
+- [ ] Task 21: extract `missions/missions.js`
+- [ ] Task 22: final cleanup of `app3d.js`
+- [ ] Task 23: update architecture + handoff docs
+
+**Important verification note:** the headless container used for these refactor commits cannot create a WebGL context (per the original session), so browser smoke tests cannot be run remotely. Each task here uses `node --check` syntax validation plus careful verbatim code moves. Whoever picks this up should run the full smoke checklist from the plan's "Conventions Used Throughout This Plan" section in a real browser before declaring Step 1 done.
 
 **The legacy 2D plan in [`docs/P0-design.md`](P0-design.md) is no longer the active track.** That document describes the older canvas runtime; the active runtime is the 3D Three.js build in `src/app3d.js`. Do not work from `P0-design.md` for new features.
 
