@@ -4,6 +4,7 @@ import { InputState } from './engine/input.js';
 import { ColliderRegistry } from './engine/collision.js';
 import { createRenderer } from './engine/renderer.js';
 import { installLighting } from './engine/lighting.js';
+import { updateThirdPersonCamera } from './engine/camera.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -2005,29 +2006,9 @@ class Ramayana3DGame {
   }
 
   _updateCamera(dt) {
-    const focus = this.player.inVehicle
-      ? this.vehicle.group.position.clone().add(new THREE.Vector3(0, 2.8, 0))
-      : this.player.group.position.clone().add(new THREE.Vector3(0.65, 2.1, 0));
-
-    const desiredDistance = this.player.inVehicle
-      ? THREE.MathUtils.clamp(this.cameraDistance, 8, 13.5)
-      : THREE.MathUtils.clamp(this.cameraDistance, 5.6, 11.2);
-
-    this.currentCameraDistance = damp(this.currentCameraDistance, desiredDistance, 7.5, dt);
-    const sideOffset = this.player.inVehicle ? 1.4 : 1.2;
-
-    const backward = new THREE.Vector3(
-      Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch),
-      Math.sin(this.cameraPitch),
-      Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch),
-    );
-    const right = new THREE.Vector3(Math.cos(this.cameraYaw), 0, -Math.sin(this.cameraYaw));
-    const desired = focus.clone()
-      .addScaledVector(backward, this.currentCameraDistance)
-      .addScaledVector(right, sideOffset);
-
-    this.camera.position.lerp(desired, 1 - Math.exp(-dt * 9));
-    this.camera.lookAt(focus);
+    const target = this.player.inVehicle ? this.vehicle : this.player;
+    const mode = this.player.inVehicle ? 'vehicle' : 'foot';
+    updateThirdPersonCamera(this.camera, this, target, mode, dt);
   }
 
   _updateInteractionPrompt() {
