@@ -5,6 +5,7 @@ import { ColliderRegistry } from './engine/collision.js';
 import { createRenderer } from './engine/renderer.js';
 import { installLighting } from './engine/lighting.js';
 import { updateThirdPersonCamera } from './engine/camera.js';
+import * as decor from './world/decor.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -758,244 +759,20 @@ class Ramayana3DGame {
     this.scene.add(bridge);
   }
 
-  _addGroundPatch(x, z, width, depth, color) {
-    const patch = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, depth),
-      new THREE.MeshStandardMaterial({ color, roughness: 1 }),
-    );
-    patch.rotation.x = -Math.PI / 2;
-    patch.position.set(x, 0.03, z);
-    patch.receiveShadow = true;
-    this.scene.add(patch);
-  }
-
-  _addRoad(x, z, width, depth, color) {
-    const road = new THREE.Mesh(
-      new THREE.BoxGeometry(width, 0.12, depth),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.96 }),
-    );
-    road.position.set(x, 0.09, z);
-    road.receiveShadow = true;
-    this.scene.add(road);
-  }
-
-  _addLaneMark(x, z, width, depth) {
-    const line = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, depth),
-      new THREE.MeshBasicMaterial({ color: 0xf8d38a }),
-    );
-    line.rotation.x = -Math.PI / 2;
-    line.position.set(x, 0.16, z);
-    this.scene.add(line);
-  }
-
-  _addBuilding(x, z, width, depth, height, wallColor, roofColor, solid) {
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.75 });
-    const roofMaterial = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.46, metalness: 0.28 });
-
-    const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), wallMaterial);
-    body.position.set(x, height / 2, z);
-    body.castShadow = true;
-    body.receiveShadow = true;
-    this.scene.add(body);
-
-    const roof = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.22, width * 0.32, 2, 18), roofMaterial);
-    roof.position.set(x, height + 1, z);
-    roof.scale.z = depth / width;
-    roof.castShadow = true;
-    roof.receiveShadow = true;
-    this.scene.add(roof);
-
-    const windowMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1e2a, emissive: 0x4d3a14, emissiveIntensity: 0.16 });
-    const windowRows = Math.max(1, Math.floor(height / 4));
-    const windowCols = Math.max(2, Math.floor(width / 5));
-    for (let row = 0; row < windowRows; row++) {
-      for (let col = 0; col < windowCols; col++) {
-        const wx = x - width / 2 + 2 + col * ((width - 4) / Math.max(1, windowCols - 1));
-        const wy = 2 + row * 3;
-        const front = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.5), windowMaterial);
-        front.position.set(wx, wy, z + depth / 2 + 0.04);
-        this.scene.add(front);
-      }
-    }
-
-    if (solid) this._registerCollider(x, z, width, depth, 0.8);
-  }
-
-  _addWall(x, z, width, depth, height, color) {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, depth),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.82 }),
-    );
-    mesh.position.set(x, height / 2, z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
-    this._registerCollider(x, z, width, depth, 0.5);
-  }
-
-  _addGateArch(x, z) {
-    const material = new THREE.MeshStandardMaterial({ color: 0x9f7c47, roughness: 0.76 });
-    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(2.2, 11, 3.2), material);
-    leftPost.position.set(x - 4.4, 5.5, z);
-    leftPost.castShadow = true;
-    leftPost.receiveShadow = true;
-    this.scene.add(leftPost);
-    this._registerCollider(x - 4.4, z, 2.2, 3.2, 0.4);
-
-    const rightPost = leftPost.clone();
-    rightPost.position.x = x + 4.4;
-    this.scene.add(rightPost);
-    this._registerCollider(x + 4.4, z, 2.2, 3.2, 0.4);
-
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(11.2, 2.2, 3.6), material);
-    lintel.position.set(x, 10.4, z);
-    lintel.castShadow = true;
-    lintel.receiveShadow = true;
-    this.scene.add(lintel);
-  }
-
-  _addTower(x, z, radius, height, wallColor, roofColor) {
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius, radius + 0.5, height, 12),
-      new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.78 }),
-    );
-    base.position.set(x, height / 2, z);
-    base.castShadow = true;
-    base.receiveShadow = true;
-    this.scene.add(base);
-
-    const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(radius * 0.82, 16, 16),
-      new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.5, metalness: 0.22 }),
-    );
-    cap.position.set(x, height + radius * 0.2, z);
-    cap.scale.y = 0.66;
-    cap.castShadow = true;
-    this.scene.add(cap);
-
-    this._registerCollider(x, z, radius * 2.2, radius * 2.2, 0.6);
-  }
-
-  _addStreetLamp(x, z) {
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.14, 0.18, 5.6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x5b4630, roughness: 0.86 }),
-    );
-    pole.position.set(x, 2.8, z);
-    pole.castShadow = true;
-    this.scene.add(pole);
-
-    const lamp = new THREE.Mesh(
-      new THREE.SphereGeometry(0.42, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffd477, emissive: 0xffb650, emissiveIntensity: 1, roughness: 0.35 }),
-    );
-    lamp.position.set(x, 5.4, z);
-    this.scene.add(lamp);
-
-    const light = new THREE.PointLight(0xffd36c, 0.75, 18, 2);
-    light.position.copy(lamp.position);
-    this.scene.add(light);
-  }
-
-  _addTorch(x, z) {
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.14, 2.6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x573822, roughness: 0.9 }),
-    );
-    pole.position.set(x, 1.3, z);
-    pole.castShadow = true;
-    this.scene.add(pole);
-
-    const flame = new THREE.Mesh(
-      new THREE.SphereGeometry(0.34, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffaa54, emissive: 0xff7f22, emissiveIntensity: 1.4, roughness: 0.2 }),
-    );
-    flame.position.set(x, 2.75, z);
-    this.scene.add(flame);
-
-    const light = new THREE.PointLight(0xff8f44, 1.4, 24, 2);
-    light.position.copy(flame.position);
-    this.scene.add(light);
-  }
-
-  _addTree(x, z, radius, height) {
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius * 0.18, radius * 0.26, height, 10),
-      new THREE.MeshStandardMaterial({ color: 0x603718, roughness: 0.98 }),
-    );
-    trunk.position.set(x, height / 2, z);
-    trunk.castShadow = true;
-    this.scene.add(trunk);
-
-    const crown = new THREE.Mesh(
-      new THREE.SphereGeometry(radius * 2.1, 14, 14),
-      new THREE.MeshStandardMaterial({ color: 0x355f31, roughness: 0.96 }),
-    );
-    crown.position.set(x, height + radius * 1.2, z);
-    crown.castShadow = true;
-    this.scene.add(crown);
-
-    this._registerCollider(x, z, radius * 2.2, radius * 2.2, 0.7);
-  }
-
-  _addRock(x, z, size, color) {
-    const rock = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(size, 0),
-      new THREE.MeshStandardMaterial({ color, roughness: 1 }),
-    );
-    rock.position.set(x, size * 0.42, z);
-    rock.rotation.set((x + z) * 0.02, x * 0.01, z * 0.01);
-    rock.castShadow = true;
-    rock.receiveShadow = true;
-    this.scene.add(rock);
-    this._registerCollider(x, z, size * 1.6, size * 1.6, 0.7);
-  }
-
-  _addRuin(x, z, width, depth, height) {
-    const material = new THREE.MeshStandardMaterial({ color: 0x8d7a62, roughness: 0.94 });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
-    base.position.set(x, height / 2, z);
-    base.castShadow = true;
-    base.receiveShadow = true;
-    this.scene.add(base);
-    this._registerCollider(x, z, width, depth, 0.5);
-  }
-
-  _addBridge(x, z, width, depth) {
-    const wood = new THREE.MeshStandardMaterial({ color: 0x8b6743, roughness: 0.9 });
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(width, 0.8, depth), wood);
-    deck.position.set(x, 1.2, z);
-    deck.castShadow = true;
-    deck.receiveShadow = true;
-    this.scene.add(deck);
-
-    const rail1 = new THREE.Mesh(new THREE.BoxGeometry(width, 0.3, 0.2), wood);
-    rail1.position.set(x, 2.3, z - depth / 2);
-    rail1.castShadow = true;
-    this.scene.add(rail1);
-
-    const rail2 = rail1.clone();
-    rail2.position.z = z + depth / 2;
-    this.scene.add(rail2);
-  }
-
-  _addBanner(x, z, color) {
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.1, 7, 8),
-      new THREE.MeshStandardMaterial({ color: 0x5f4631, roughness: 0.86 }),
-    );
-    pole.position.set(x, 3.5, z);
-    pole.castShadow = true;
-    this.scene.add(pole);
-
-    const cloth = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.4, 2.8),
-      new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, roughness: 0.7 }),
-    );
-    cloth.position.set(x + 1.2, 5.2, z);
-    this.scene.add(cloth);
-  }
+  _addGroundPatch(x, z, width, depth, color) { decor.addGroundPatch(this.scene, this.colliderRegistry, x, z, width, depth, color); }
+  _addRoad(x, z, width, depth, color) { decor.addRoad(this.scene, this.colliderRegistry, x, z, width, depth, color); }
+  _addLaneMark(x, z, width, depth) { decor.addLaneMark(this.scene, this.colliderRegistry, x, z, width, depth); }
+  _addBuilding(x, z, width, depth, height, wallColor, roofColor, solid) { decor.addBuilding(this.scene, this.colliderRegistry, x, z, width, depth, height, wallColor, roofColor, solid); }
+  _addWall(x, z, width, depth, height, color) { decor.addWall(this.scene, this.colliderRegistry, x, z, width, depth, height, color); }
+  _addGateArch(x, z) { decor.addGateArch(this.scene, this.colliderRegistry, x, z); }
+  _addTower(x, z, radius, height, wallColor, roofColor) { decor.addTower(this.scene, this.colliderRegistry, x, z, radius, height, wallColor, roofColor); }
+  _addStreetLamp(x, z) { decor.addStreetLamp(this.scene, this.colliderRegistry, x, z); }
+  _addTorch(x, z) { decor.addTorch(this.scene, this.colliderRegistry, x, z); }
+  _addTree(x, z, radius, height) { decor.addTree(this.scene, this.colliderRegistry, x, z, radius, height); }
+  _addRock(x, z, size, color) { decor.addRock(this.scene, this.colliderRegistry, x, z, size, color); }
+  _addRuin(x, z, width, depth, height) { decor.addRuin(this.scene, this.colliderRegistry, x, z, width, depth, height); }
+  _addBridge(x, z, width, depth) { decor.addBridge(this.scene, this.colliderRegistry, x, z, width, depth); }
+  _addBanner(x, z, color) { decor.addBanner(this.scene, this.colliderRegistry, x, z, color); }
 
   _registerCollider(x, z, width, depth, padding = 0) {
     return this.colliderRegistry.register(x, z, width, depth, padding);
