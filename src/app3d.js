@@ -1,6 +1,7 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { hasSave, writeSave, readSave, clearSave, loadSettings, saveSettings } from './engine/save.js';
 import { InputState } from './engine/input.js';
+import { ColliderRegistry } from './engine/collision.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -247,7 +248,8 @@ class Ramayana3DGame {
     this.currentCameraDistance = this.cameraDistance;
     this.vehicleCameraDistance = 10.2;
 
-    this.colliders = [];
+    this.colliderRegistry = new ColliderRegistry(WORLD_LIMIT);
+    this.colliders = this.colliderRegistry.colliders;
     this.enemies = [];
     this.projectiles = [];
     this.enemyProjectiles = [];
@@ -1030,12 +1032,7 @@ class Ramayana3DGame {
   }
 
   _registerCollider(x, z, width, depth, padding = 0) {
-    this.colliders.push({
-      minX: x - width / 2 - padding,
-      maxX: x + width / 2 + padding,
-      minZ: z - depth / 2 - padding,
-      maxZ: z + depth / 2 + padding,
-    });
+    return this.colliderRegistry.register(x, z, width, depth, padding);
   }
 
   _bindEvents() {
@@ -1565,46 +1562,11 @@ class Ramayana3DGame {
   }
 
   _moveBody(position, delta, radius) {
-    position.add(delta);
-    const collided = this._resolveCollisions(position, radius);
-    position.x = THREE.MathUtils.clamp(position.x, -WORLD_LIMIT, WORLD_LIMIT);
-    position.z = THREE.MathUtils.clamp(position.z, -WORLD_LIMIT, WORLD_LIMIT);
-    return collided;
+    return this.colliderRegistry.moveBody(position, delta, radius);
   }
 
   _resolveCollisions(position, radius) {
-    let collided = false;
-    for (let pass = 0; pass < 3; pass++) {
-      this.colliders.forEach(collider => {
-        const nearestX = THREE.MathUtils.clamp(position.x, collider.minX, collider.maxX);
-        const nearestZ = THREE.MathUtils.clamp(position.z, collider.minZ, collider.maxZ);
-        const dx = position.x - nearestX;
-        const dz = position.z - nearestZ;
-        const distSq = dx * dx + dz * dz;
-        if (distSq >= radius * radius) return;
-
-        collided = true;
-
-        if (distSq > 0.0001) {
-          const dist = Math.sqrt(distSq);
-          const push = radius - dist;
-          position.x += (dx / dist) * push;
-          position.z += (dz / dist) * push;
-          return;
-        }
-
-        const left = Math.abs(position.x - collider.minX);
-        const right = Math.abs(collider.maxX - position.x);
-        const top = Math.abs(position.z - collider.minZ);
-        const bottom = Math.abs(collider.maxZ - position.z);
-        const smallest = Math.min(left, right, top, bottom);
-        if (smallest === left) position.x = collider.minX - radius;
-        else if (smallest === right) position.x = collider.maxX + radius;
-        else if (smallest === top) position.z = collider.minZ - radius;
-        else position.z = collider.maxZ + radius;
-      });
-    }
-    return collided;
+    return this.colliderRegistry.resolveCollisions(position, radius);
   }
 
   _doDodge() {
@@ -1762,12 +1724,7 @@ class Ramayana3DGame {
   }
 
   _pointHitsCollider(point, padding) {
-    return this.colliders.some(collider => (
-      point.x >= collider.minX - padding &&
-      point.x <= collider.maxX + padding &&
-      point.z >= collider.minZ - padding &&
-      point.z <= collider.maxZ + padding
-    ));
+    return this.colliderRegistry.pointHitsCollider(point, padding);
   }
 
   _updateEnemies(dt) {
