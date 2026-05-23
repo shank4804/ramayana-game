@@ -1,6 +1,6 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
+import { hasSave, writeSave, readSave, clearSave } from './engine/save.js';
 
-const SAVE_KEY = 'ramayana-3d-openworld-v3';
 const SETTINGS_KEY = 'ramayana-3d-settings-v1';
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -1892,7 +1892,7 @@ class Ramayana3DGame {
         },
       });
       this.uiMode = 'cutscene';
-      localStorage.removeItem(SAVE_KEY);
+      clearSave();
       return;
     }
 
@@ -2235,7 +2235,7 @@ class Ramayana3DGame {
   }
 
   _hasSave() {
-    return !!localStorage.getItem(SAVE_KEY);
+    return hasSave();
   }
 
   _saveGame() {
@@ -2265,20 +2265,15 @@ class Ramayana3DGame {
         position: [enemy.group.position.x, 0, enemy.group.position.z],
       })),
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    writeSave(payload);
   }
 
   _loadSave() {
-    try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    return readSave();
   }
 
   _clearSave() {
-    localStorage.removeItem(SAVE_KEY);
+    clearSave();
   }
 }
 
