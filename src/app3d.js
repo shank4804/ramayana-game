@@ -11,6 +11,7 @@ import { createEnemy, updateEnemies, clearEnemies, spawnMissionEnemies } from '.
 import { createChariot, updateChariot, enterChariot, exitChariot } from './entities/chariot.js';
 import { createPlayer, updatePlayer, updatePlayerAnimation, doDodge, damagePlayer } from './entities/player.js';
 import { doSwordAttack } from './combat/sword.js';
+import { fireArrow, spawnEnemyOrb, updateProjectiles, updateEnemyProjectiles } from './combat/bow.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -852,113 +853,29 @@ class Ramayana3DGame {
   }
 
   _fireArrow() {
-    if (this.player.inVehicle || this.player.bowCooldown > 0) return;
-
-    this.player.bowCooldown = 0.72;
-    this.player.bowPose = 1;
+    if (!fireArrow(this.player, this.camera, this.scene, this.projectiles)) return;
     this.weaponValue.textContent = 'Bow';
-
-    const direction = new THREE.Vector3();
-    this.camera.getWorldDirection(direction);
-    direction.y = Math.max(0.02, direction.y);
-    direction.normalize();
-
-    const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.04, 1.45, 8),
-      new THREE.MeshStandardMaterial({ color: 0xe6c670, roughness: 0.4, metalness: 0.2 }),
-    );
-    mesh.rotation.z = Math.PI / 2;
-    mesh.castShadow = true;
-    mesh.position.copy(this.player.group.position).add(new THREE.Vector3(0, 2.25, 0));
-    this.scene.add(mesh);
-
-    this.projectiles.push({
-      mesh,
-      velocity: direction.multiplyScalar(46),
-      ttl: 2.8,
-      damage: 24,
-    });
   }
 
   _spawnEnemyOrb(enemy) {
-    const direction = this._getCombatTargetPosition().clone().add(new THREE.Vector3(0, 1.4, 0)).sub(enemy.group.position);
-    direction.y = 0.06;
-    direction.normalize();
-
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.35, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xff7a59, emissive: 0xaa2e1e, emissiveIntensity: 1.2 }),
-    );
-    mesh.castShadow = true;
-    mesh.position.copy(enemy.group.position).add(new THREE.Vector3(0, 2.1, 0));
-    this.scene.add(mesh);
-
-    this.enemyProjectiles.push({
-      mesh,
-      velocity: direction.multiplyScalar(26),
-      ttl: 3.2,
-      damage: 14,
-    });
+    spawnEnemyOrb(enemy, this._getCombatTargetPosition(), this.scene, this.enemyProjectiles);
   }
 
   _updateProjectiles(dt) {
-    this.projectiles = this.projectiles.filter(projectile => {
-      projectile.ttl -= dt;
-      if (projectile.ttl <= 0) {
-        this.scene.remove(projectile.mesh);
-        return false;
-      }
-
-      projectile.mesh.position.addScaledVector(projectile.velocity, dt);
-      projectile.mesh.lookAt(projectile.mesh.position.clone().add(projectile.velocity));
-
-      if (this._pointHitsCollider(projectile.mesh.position, 0.3)) {
-        this.scene.remove(projectile.mesh);
-        return false;
-      }
-
-      const hitEnemy = this.enemies.find(enemy => {
-        if (!enemy.alive) return false;
-        return enemy.group.position.distanceTo(projectile.mesh.position) <= enemy.radius + 0.85;
-      });
-
-      if (hitEnemy) {
-        hitEnemy.hp -= projectile.damage;
-        hitEnemy.flash = 0.34;
-        if (hitEnemy.hp <= 0) {
-          hitEnemy.alive = false;
-          hitEnemy.group.visible = false;
-        }
-        this.scene.remove(projectile.mesh);
-        return false;
-      }
-
-      return true;
+    this.projectiles = updateProjectiles(this.projectiles, dt, {
+      scene: this.scene,
+      colliders: this.colliderRegistry,
+      enemies: this.enemies,
     });
   }
 
   _updateEnemyProjectiles(dt) {
-    const targetPos = this._getCombatTargetPosition().clone().add(new THREE.Vector3(0, 1.4, 0));
-    this.enemyProjectiles = this.enemyProjectiles.filter(projectile => {
-      projectile.ttl -= dt;
-      if (projectile.ttl <= 0) {
-        this.scene.remove(projectile.mesh);
-        return false;
-      }
-
-      projectile.mesh.position.addScaledVector(projectile.velocity, dt);
-      if (this._pointHitsCollider(projectile.mesh.position, 0.45)) {
-        this.scene.remove(projectile.mesh);
-        return false;
-      }
-
-      if (projectile.mesh.position.distanceTo(targetPos) <= (this.player.inVehicle ? 2.6 : 1.2)) {
-        this._damagePlayer(projectile.damage);
-        this.scene.remove(projectile.mesh);
-        return false;
-      }
-
-      return true;
+    this.enemyProjectiles = updateEnemyProjectiles(this.enemyProjectiles, dt, {
+      scene: this.scene,
+      colliders: this.colliderRegistry,
+      targetPos: this._getCombatTargetPosition(),
+      playerInVehicle: this.player.inVehicle,
+      damagePlayer: amount => this._damagePlayer(amount),
     });
   }
 
