@@ -6,6 +6,7 @@ import { createRenderer } from './engine/renderer.js';
 import { installLighting } from './engine/lighting.js';
 import { updateThirdPersonCamera } from './engine/camera.js';
 import * as decor from './world/decor.js';
+import { buildAyodhya } from './world/ayodhya.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -583,7 +584,7 @@ class Ramayana3DGame {
     this._addGroundPatch(146, 4, 80, 62, 0x49646f);
 
     this._buildRoadNetwork();
-    this._buildAyodhyaDistrict();
+    buildAyodhya(this.scene, this.colliderRegistry);
     this._buildForestDistrict();
     this._buildKishkindhaDistrict();
     this._buildLankaDistrict();
@@ -605,43 +606,6 @@ class Ramayana3DGame {
     for (let z = -18; z <= 138; z += 16) {
       this._addLaneMark(118, z, 0.5, 6);
     }
-  }
-
-  _buildAyodhyaDistrict() {
-    const palace = [
-      [-158, -42, 18, 16, 12, 0xd7d0c2, 0xc8a24e],
-      [-136, -42, 18, 18, 15, 0xd8d2c5, 0xc49a45],
-      [-114, -42, 16, 14, 11, 0xd5cebc, 0xcda14d],
-      [-152, 20, 14, 12, 10, 0xd8cbb5, 0xb8893d],
-      [-130, 24, 18, 16, 12, 0xd5c9b7, 0xc49d52],
-      [-110, 18, 16, 12, 9, 0xd6cfbf, 0xba8a39],
-    ];
-
-    palace.forEach(([x, z, w, d, h, wall, roof]) => {
-      this._addBuilding(x, z, w, d, h, wall, roof, true);
-    });
-
-    this._addGateArch(-92, -8);
-    this._addWall(-176, -8, 8, 24, 10, 0xbaa171);
-    this._addWall(-78, 38, 112, 6, 8, 0xc3ab7c);
-    this._addWall(-78, -54, 112, 6, 8, 0xc3ab7c);
-    this._addWall(-132, 26, 6, 20, 8, 0xc3ab7c);
-    this._addWall(-132, -42, 6, 20, 8, 0xc3ab7c);
-
-    [
-      [-175, 36],
-      [-175, -54],
-      [-85, 36],
-      [-85, -54],
-    ].forEach(([x, z]) => this._addTower(x, z, 6.2, 13, 0xd7c49a, 0xc99d43));
-
-    [
-      [-154, -8],
-      [-136, -8],
-      [-118, -8],
-      [-100, -8],
-      [-82, -8],
-    ].forEach(([x, z]) => this._addStreetLamp(x, z));
   }
 
   _buildForestDistrict() {
