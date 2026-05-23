@@ -6,12 +6,7 @@ import { createRenderer } from './engine/renderer.js';
 import { installLighting } from './engine/lighting.js';
 import { updateThirdPersonCamera } from './engine/camera.js';
 import * as decor from './world/decor.js';
-import { buildAyodhya } from './world/ayodhya.js';
-import { buildForest } from './world/forest.js';
-import { buildKishkindha } from './world/kishkindha.js';
-import { buildLanka } from './world/lanka.js';
-import { buildBackdrop } from './world/backdrop.js';
-import { buildRoadNetwork } from './world/roads.js';
+import { World } from './world/world.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -565,35 +560,10 @@ class Ramayana3DGame {
   }
 
   _buildWorld() {
-    const sky = new THREE.Mesh(
-      new THREE.SphereGeometry(520, 24, 16),
-      new THREE.MeshBasicMaterial({ color: 0xaec8f6, side: THREE.BackSide }),
-    );
-    this.scene.add(sky);
-
     this.lighting = installLighting(this.scene);
     this.sun = this.lighting.sun;
-
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(480, 480),
-      new THREE.MeshStandardMaterial({ color: 0x6b865a, roughness: 1 }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-
-    this._addGroundPatch(-120, -18, 120, 80, 0xc8b082);
-    this._addGroundPatch(-6, 52, 124, 98, 0x58754a);
-    this._addGroundPatch(74, -58, 90, 82, 0x7a6a4f);
-    this._addGroundPatch(142, 80, 108, 136, 0x5a2422);
-    this._addGroundPatch(146, 4, 80, 62, 0x49646f);
-
-    buildRoadNetwork(this.scene, this.colliderRegistry);
-    buildAyodhya(this.scene, this.colliderRegistry);
-    buildForest(this.scene, this.colliderRegistry, this.decor);
-    buildKishkindha(this.scene, this.colliderRegistry);
-    buildLanka(this.scene, this.colliderRegistry);
-    buildBackdrop(this.scene, this.colliderRegistry);
+    this.world = new World();
+    this.world.build(this.scene, this.colliderRegistry, this.decor);
   }
 
   _addGroundPatch(x, z, width, depth, color) { decor.addGroundPatch(this.scene, this.colliderRegistry, x, z, width, depth, color); }
