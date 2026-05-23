@@ -14,7 +14,7 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 
 | # | Step | Status | Plan |
 |---|---|---|---|
-| 1 | Refactor scaffold (split `src/app3d.js` into modules) | **In progress** — engine layer extracted (tasks 1-7 of 23 done) | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
+| 1 | Refactor scaffold (split `src/app3d.js` into modules) | **Done (pending browser smoke test)** — `app3d.js` shrunk from 2293 → ~880 lines, all 22 extraction commits landed | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
 | 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | Not started | None yet |
 | 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | Not started | None yet |
 | 4 | Character pipeline (Rama GLTF + animation state machine) | Not started | None yet |
@@ -23,9 +23,12 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 | 7 | Polish pass (palette, attribution) | Not started | None yet |
 | 8 | Final verification across quality tiers | Not started | None yet |
 
-**Next AI's job:** finish Step 1. The engine layer is extracted (`src/engine/save.js`, `input.js`, `collision.js`, `renderer.js`, `lighting.js`, `camera.js`). Remaining work: world/decor extractions (tasks 8-12), entities (13-15), combat (16-17), UI (18-20), missions (21), cleanup (22), docs (23). After Step 1 lands, write a new plan for Step 2 (Asset pipeline) and continue.
+**Next AI's job:**
 
-**Progress on Step 1 (refactor scaffold):**
+1. **Validate Step 1 in a real browser** before starting Step 2. Run the full smoke checklist from the plan's "Conventions Used Throughout This Plan" section (`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`). The refactor commits were verified only with `node --check` plus careful verbatim moves — they were authored in a remote container that cannot create a WebGL context.
+2. **Write a Step 2 plan** using `superpowers:writing-plans` against the parent spec, then execute it. Step 2 is the asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen).
+
+**Progress on Step 1 (refactor scaffold):** all 23 tasks complete.
 
 - [x] Task 1: extract `engine/save.js`
 - [x] Task 2: extract settings persistence into `engine/save.js`
@@ -34,24 +37,34 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 - [x] Task 5: extract `engine/renderer.js`
 - [x] Task 6: extract `engine/lighting.js`
 - [x] Task 7: extract `engine/camera.js`
-- [ ] Task 8: extract `world/decor.js` (shared primitive builders)
-- [ ] Task 9: extract `world/ayodhya.js`
-- [ ] Task 10: extract forest/kishkindha/lanka/ravana districts
-- [ ] Task 11: extract `world/backdrop.js`, `world/roads.js`
-- [ ] Task 12: extract `world/world.js` orchestrator
-- [ ] Task 13: extract `entities/enemy.js`
-- [ ] Task 14: extract `entities/chariot.js`
-- [ ] Task 15: extract `entities/player.js`
-- [ ] Task 16: extract `combat/sword.js`
-- [ ] Task 17: extract `combat/bow.js`
-- [ ] Task 18: extract `ui/hud.js`
-- [ ] Task 19: extract `ui/overlay.js`
-- [ ] Task 20: extract `ui/menu.js`
-- [ ] Task 21: extract `missions/missions.js`
-- [ ] Task 22: final cleanup of `app3d.js`
-- [ ] Task 23: update architecture + handoff docs
+- [x] Task 8: extract `world/decor.js` (shared primitive builders)
+- [x] Task 9: extract `world/ayodhya.js`
+- [x] Task 10: extract forest/kishkindha/lanka districts (no Ravana district existed in current code; Ravana boss area is part of `lanka.js`)
+- [x] Task 11: extract `world/backdrop.js`, `world/roads.js`
+- [x] Task 12: extract `world/world.js` orchestrator
+- [x] Task 13: extract `entities/enemy.js`
+- [x] Task 14: extract `entities/chariot.js`
+- [x] Task 15: extract `entities/player.js`
+- [x] Task 16: extract `combat/sword.js`
+- [x] Task 17: extract `combat/bow.js`
+- [x] Task 18: extract `ui/hud.js`
+- [x] Task 19: extract `ui/overlay.js`
+- [x] Task 20: extract `ui/menu.js`
+- [x] Task 21: extract `missions/missions.js`
+- [x] Task 22: final cleanup of `app3d.js` (~880 lines, above the 500-line aspirational target but the residual is orchestrator wiring — event binding and mission flow coordination — that doesn't extract cleanly without dragging state into modules)
+- [x] Task 23: update architecture + handoff docs
 
-**Important verification note:** the headless container used for these refactor commits cannot create a WebGL context (per the original session), so browser smoke tests cannot be run remotely. Each task here uses `node --check` syntax validation plus careful verbatim code moves. Whoever picks this up should run the full smoke checklist from the plan's "Conventions Used Throughout This Plan" section in a real browser before declaring Step 1 done.
+**Residual contents of `src/app3d.js`** (per Task 22 documentation requirement):
+
+- Constructor (DOM lookups, state init, module wiring, world build, event binding)
+- `_bindEvents` — keyboard / mouse / pointer-lock / wheel / resize listeners (~110 lines, tightly coupled to UI mode state)
+- Mission flow (`_startNewGame`, `_continueGame`, `_resetActorsForMission`, `_restoreActorState`, `_updateMission`, `_completeMission`, `_spawnMissionEnemies` shim) — these coordinate player, vehicle, enemies, HUD, overlay, save in one place
+- Save snapshot assembly (`_saveGame` reads from player/vehicle/enemies and writes via `engine/save.js`)
+- Thin shims for module functions still called from many places (`_updateHUD`, `_updateRadar`, `_toast`, `_setMarker`, etc.)
+
+These can be extracted further in a future cleanup pass, but the visual-foundation roadmap doesn't require it.
+
+**Important verification note:** the headless container used for these refactor commits cannot create a WebGL context (per the original session), so browser smoke tests were not run as part of these commits. Each task used `node --check` syntax validation plus careful verbatim code moves. Run the smoke checklist in a real browser before declaring Step 1 fully done.
 
 **The legacy 2D plan in [`docs/P0-design.md`](P0-design.md) is no longer the active track.** That document describes the older canvas runtime; the active runtime is the 3D Three.js build in `src/app3d.js`. Do not work from `P0-design.md` for new features.
 
@@ -195,18 +208,14 @@ Important interpretation:
 - There is no skeletal animation system yet.
 - Collision is custom AABB logic, not a physics engine.
 - Enemy movement has no navmesh.
-- Most of the new runtime still lives in one large file: [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js).
+- The runtime is now split across focused modules under `src/engine/`, `src/world/`, `src/entities/`, `src/combat/`, `src/ui/`, `src/missions/`. `src/app3d.js` is now ~880 lines of orchestrator wiring instead of the original 2293-line monolith.
 - The 3D runtime still requires working WebGL support in the browser.
 
 ## Best Next Step
 
-Execute the Step 1 plan: [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md).
-
-The plan has 23 bite-sized tasks. Each task extracts one cohesive chunk of `src/app3d.js` into a focused ES module, verifies the game still boots/plays identically, and commits. Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to drive it.
-
-After Step 1 lands, write a new plan for Step 2 (Asset Pipeline) using `superpowers:writing-plans` against the parent spec.
-
-The earlier WebGL-fallback branch is no longer the next priority — the user's browser is serving the 3D runtime fine and the AAA Phase 1 track now drives the schedule. If WebGL breaks again on a specific browser, treat it as a separate bug, not a track shift.
+1. **Run the Step 1 smoke checklist in a real browser.** All 23 extraction commits are in `node --check` clean and reviewed for verbatim correctness, but no browser test was possible in the remote container they were authored in.
+2. **Write a plan for AAA Phase 1 Step 2** (asset pipeline — `LoadingManager`, `GLTFLoader`, loading screen) using `superpowers:writing-plans` against the parent spec at `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
+3. **Execute Step 2** using `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
 
 ## Files Touched In This Phase
 

@@ -1,6 +1,6 @@
 # Ramayana Game Architecture
 
-Last updated: 2026-04-11
+Last updated: 2026-05-23
 
 ## Overview
 
@@ -19,20 +19,53 @@ There is no bundler or build step. [src/bootstrap.js](/Users/shashank/workspace/
 
 ## Runtime Structure
 
-The active runtime is centered on `Ramayana3DGame` in [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js).
+The active runtime is the `Ramayana3DGame` orchestrator in [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js), which now wires together focused modules instead of owning all gameplay code directly.
 
-That class owns:
+The orchestrator still owns:
 
-- Three.js renderer, scene, camera, fog, and lighting
-- the animation loop driven by `requestAnimationFrame`
-- top-level UI state (`title`, `cutscene`, `playing`)
-- overlay modes for main menu, settings, and story scenes
-- world generation and collision registration
-- player and vehicle controllers
-- mission progression
-- enemy spawning and combat updates
-- HUD, radar, prompt, overlay, and toast updates
-- save/load through `localStorage`
+- the Three.js scene/camera/clock and the `requestAnimationFrame` loop
+- top-level UI state (`title`, `cutscene`, `playing`) and mission progression coordination
+- event binding (`_bindEvents`) — keyboard, mouse, pointer-lock, wheel, resize
+- mission flow (`_startNewGame`, `_continueGame`, `_completeMission`, `_resetActorsForMission`, `_restoreActorState`, `_updateMission`)
+- save payload assembly (the snapshot fields, restore wiring)
+
+Everything else now lives in modules under `src/`.
+
+## Module Layout
+
+```
+src/
+  bootstrap.js                       boot loader, surfaces failures
+  app3d.js                           orchestrator + mission flow + event wiring
+  engine/
+    save.js                          localStorage save/load + settings persistence
+    input.js                         InputState (keys/mouse/pointer)
+    collision.js                     ColliderRegistry (AABB)
+    renderer.js                      WebGLRenderer creation + config
+    lighting.js                      sun + hemisphere lights
+    camera.js                        third-person follow update
+  world/
+    world.js                         district orchestrator (sky/ground/districts)
+    decor.js                         shared primitive builders (tree, rock, lamp, wall, etc.)
+    ayodhya.js, forest.js,
+    kishkindha.js, lanka.js,
+    backdrop.js, roads.js            district builders
+  entities/
+    player.js                        Rama controller + mesh assembly
+    chariot.js                       chariot controller + mesh assembly
+    enemy.js                         enemy archetypes + pursuit AI
+  combat/
+    sword.js                         cone hit detection
+    bow.js                           arrows + enemy orbs + projectile updates
+  ui/
+    hud.js                           chapter/objective card, status, radar, prompt, toast, marker
+    overlay.js                       cutscene/dialogue overlay
+    menu.js                          title menu navigation + settings UI sync
+  missions/
+    missions.js                      MISSION_ORDER + INTRO_SCENE data
+```
+
+Module dependency direction: `app3d` → modules. Within modules, `world/` and `entities/` depend on `engine/` for collision; UI modules are self-contained. No circular imports.
 
 ## Boot And State Flow
 
@@ -61,37 +94,27 @@ The current startup flow is:
 
 ## World Model
 
-The game world is currently procedural and code-authored inside [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js).
+The game world is procedural and code-authored. The orchestrator instantiates `World` from `src/world/world.js`, which then calls each district builder in order: backdrop, roads, Ayodhya, forest, Kishkindha, Lanka.
 
 Major world sections:
 
-- Ayodhya district
-- forest and exile camp
-- Kishkindha rock fields
-- Lanka outer city
-- Ravana court approach
+- Ayodhya district (`src/world/ayodhya.js`)
+- forest and exile camp (`src/world/forest.js`)
+- Kishkindha rock fields (`src/world/kishkindha.js`)
+- Lanka outer city and Ravana court approach (`src/world/lanka.js`)
 
-World building is done with helper methods such as:
-
-- `_buildRoadNetwork()`
-- `_buildAyodhyaDistrict()`
-- `_buildForestDistrict()`
-- `_buildKishkindhaDistrict()`
-- `_buildLankaDistrict()`
-- `_buildBackdrop()`
-
-These helpers create simple geometry directly with Three.js primitives. There is no imported model pipeline yet.
+Each district uses shared primitive builders exported from `src/world/decor.js` — trees, walls, towers, lamps, torches, banners, bridges, ruins. There is no imported model pipeline yet.
 
 ## Collision System
 
-Collisions are currently handled through manually registered 2D AABB blockers on the X/Z plane.
+Collisions are handled by the `ColliderRegistry` in `src/engine/collision.js` — manually registered 2D AABB blockers on the X/Z plane.
 
-Relevant methods:
+API:
 
-- `_registerCollider()`
-- `_moveBody()`
-- `_resolveCollisions()`
-- `_pointHitsCollider()`
+- `register(x, z, width, depth, padding)`
+- `moveBody(position, delta, radius)` — adds delta, resolves collisions, clamps to world bounds
+- `resolveCollisions(position, radius)`
+- `pointHitsCollider(point, padding)`
 
 This is not a full physics engine. It is a lightweight gameplay collision layer used for:
 
@@ -108,7 +131,7 @@ Important implication:
 
 ## Player Controller
 
-The player is built in `_createPlayer()` in [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js).
+The player lives in `src/entities/player.js` (`createPlayer`, `updatePlayer`, `updatePlayerAnimation`, `doDodge`, `damagePlayer`).
 
 Current player systems:
 
@@ -124,7 +147,7 @@ The player model is assembled from primitive meshes, not imported character asse
 
 ## Vehicle Controller
 
-The royal chariot is built in `_createChariot()`.
+The royal chariot lives in `src/entities/chariot.js` (`createChariot`, `updateChariot`, `enterChariot`, `exitChariot`).
 
 Current vehicle systems:
 
@@ -138,7 +161,7 @@ This is the main GTA-like system in the current prototype. It gives the build a 
 
 ## Mission System
 
-Campaign progression is defined by the `MISSION_ORDER` array near the top of [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js).
+Campaign progression is defined by the `MISSION_ORDER` array in `src/missions/missions.js` (also exports `INTRO_SCENE`).
 
 Each mission contains:
 
@@ -166,17 +189,18 @@ Mission flow:
 
 ## Combat
 
-Combat is handled directly in [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js), not through separate entity modules.
+Combat lives in `src/combat/` and `src/entities/enemy.js`.
 
 Current systems:
 
-- sword cone hit detection via `_doSwordAttack()`
-- bow projectiles via `_fireArrow()`
-- boss ranged projectiles via `_spawnEnemyOrb()`
-- enemy pursuit and melee pressure via `_updateEnemies()`
-- player damage and fail state via `_damagePlayer()`
+- sword cone hit detection via `doSwordAttack(player, enemies)` in `src/combat/sword.js`
+- bow projectiles via `fireArrow(player, camera, scene, projectiles)` in `src/combat/bow.js`
+- boss ranged projectiles via `spawnEnemyOrb(enemy, targetPos, scene, enemyProjectiles)`
+- projectile updates via `updateProjectiles` / `updateEnemyProjectiles`
+- enemy pursuit and melee pressure via `updateEnemies(enemies, dt, ctx)` in `src/entities/enemy.js`
+- player damage and fail state via `damagePlayer(player, amount)` in `src/entities/player.js` (orchestrator handles the fail-state overlay and autosave)
 
-Enemies are primitive-mesh actors created by `_createEnemy()`.
+Enemies are primitive-mesh actors created by `createEnemy(type, position)`.
 
 ## Camera And Input
 
@@ -189,10 +213,11 @@ Camera systems:
 - vehicle camera follow
 - settings-driven sensitivity and Y-axis inversion
 
-Relevant methods:
+Relevant code:
 
-- `_bindEvents()`
-- `_updateCamera()`
+- input/pointer state: `src/engine/input.js` (`InputState`)
+- third-person camera follow: `src/engine/camera.js` (`updateThirdPersonCamera`)
+- event binding still in `_bindEvents()` on the orchestrator
 
 The control scheme is closer to a third-person action sandbox now than to the earlier top-down model, even though the simulation is still intentionally lightweight.
 
@@ -213,11 +238,15 @@ The HUD and overlays are DOM-based:
 - toast banner
 - aiming crosshair
 
-Those elements live in [index.html](/Users/shashank/workspace/ramayana-game/index.html) and [style.css](/Users/shashank/workspace/ramayana-game/style.css), while [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js) updates them each frame or during state transitions.
+Those elements live in [index.html](/Users/shashank/workspace/ramayana-game/index.html) and [style.css](/Users/shashank/workspace/ramayana-game/style.css). The DOM interactions are now split across three controllers wired by the orchestrator:
+
+- `HUD` in `src/ui/hud.js` — chapter card, health, enemies, mode/weapon/speed, radar, interaction prompt, toast, marker
+- `Overlay` in `src/ui/overlay.js` — cutscene/dialogue overlay, scene line rendering
+- `TitleMenu` in `src/ui/menu.js` — main menu nav, focus management, settings UI sync
 
 ## Persistence
 
-Save/load is handled with `localStorage` in [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js).
+Save/load is handled with `localStorage` in `src/engine/save.js` (`hasSave`, `readSave`, `writeSave`, `clearSave`, `loadSettings`, `saveSettings`). The orchestrator builds the save payload before calling `writeSave`.
 
 Current save key:
 
@@ -261,10 +290,6 @@ The new 3D runtime is materially closer to a GTA-like prototype than the earlier
 - no navmesh or real physics engine
 - no authored cutscene cameras
 - no NPC dialogue actors in the world
-- large portions of gameplay still live in one file
 - runtime still depends on WebGL support in the browser
 
-The next meaningful technical step is either:
-
-1. split [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js) into world/controller/UI modules, or
-2. replace primitive geometry with authored assets and animation clips
+The next meaningful technical step is AAA Phase 1 Step 2: the asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen). See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
