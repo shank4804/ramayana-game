@@ -10,6 +10,7 @@ import { World } from './world/world.js';
 import { createEnemy, updateEnemies, clearEnemies, spawnMissionEnemies } from './entities/enemy.js';
 import { createChariot, updateChariot, enterChariot, exitChariot } from './entities/chariot.js';
 import { createPlayer, updatePlayer, updatePlayerAnimation, doDodge, damagePlayer } from './entities/player.js';
+import { doSwordAttack } from './combat/sword.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -843,37 +844,10 @@ class Ramayana3DGame {
   }
 
   _doSwordAttack() {
-    if (this.player.inVehicle || this.player.swordCooldown > 0) return;
-
-    this.player.swordCooldown = 0.48;
-    this.player.attackTime = 1;
+    const result = doSwordAttack(this.player, this.enemies);
+    if (!result.fired) return;
     this.weaponValue.textContent = 'Blade';
-
-    const origin = this.player.group.position.clone();
-    const facing = new THREE.Vector3(
-      Math.sin(this.player.group.rotation.y),
-      0,
-      Math.cos(this.player.group.rotation.y),
-    );
-
-    let hits = 0;
-    this.enemies.forEach(enemy => {
-      if (!enemy.alive) return;
-      const toEnemy = enemy.group.position.clone().sub(origin);
-      const distance = toEnemy.length();
-      if (distance > enemy.radius + 4.4) return;
-      toEnemy.normalize();
-      if (facing.dot(toEnemy) < 0.18) return;
-      enemy.hp -= 30;
-      enemy.flash = 0.28;
-      hits++;
-      if (enemy.hp <= 0) {
-        enemy.alive = false;
-        enemy.group.visible = false;
-      }
-    });
-
-    if (hits > 0) this._toast(`Sword strike: ${hits} hit${hits > 1 ? 's' : ''}`);
+    if (result.hits > 0) this._toast(`Sword strike: ${result.hits} hit${result.hits > 1 ? 's' : ''}`);
     this._saveGame();
   }
 
