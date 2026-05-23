@@ -13,6 +13,7 @@ import { createPlayer, updatePlayer, updatePlayerAnimation, doDodge, damagePlaye
 import { doSwordAttack } from './combat/sword.js';
 import { fireArrow, spawnEnemyOrb, updateProjectiles, updateEnemyProjectiles } from './combat/bow.js';
 import { HUD } from './ui/hud.js';
+import { Overlay, normalizeSceneLine } from './ui/overlay.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -273,6 +274,20 @@ class Ramayana3DGame {
     this._buildWorld();
     this._syncSettingsUI();
     this._applySettings();
+    this.overlayCtl = new Overlay({
+      overlayEl: this.overlay,
+      overlayEyebrow: this.overlayEyebrow,
+      overlayTitle: this.overlayTitle,
+      overlaySpeaker: this.overlaySpeaker,
+      overlayBody: this.overlayBody,
+      overlayHint: this.overlayHint,
+      menuButtonsEl: this.menuButtons,
+      settingsPanel: this.settingsPanel,
+      overlayActions: this.overlayActions,
+      primaryAction: this.primaryAction,
+      secondaryAction: this.secondaryAction,
+    });
+
     this.hud = new HUD({
       chapterTitle: this.chapterTitle,
       objectiveText: this.objectiveText,
@@ -597,70 +612,25 @@ class Ramayana3DGame {
     this._toast('Close the browser tab to exit the build');
   }
 
-  _showOverlay({
-    eyebrow,
-    title,
-    body,
-    primary,
-    secondary,
-    primaryAction,
-    secondaryAction,
-    speaker = null,
-    hint = 'Enter or click to continue',
-    showMenu = false,
-    showSettings = false,
-    showActions = true,
-  }) {
-    document.exitPointerLock?.();
-    this.overlay.classList.remove('hidden');
-    this.overlayEyebrow.textContent = eyebrow;
-    this.overlayTitle.textContent = title;
-    this.overlayBody.textContent = body;
-    this.overlaySpeaker.textContent = speaker || '';
-    this.overlaySpeaker.classList.toggle('hidden', !speaker);
-    this.overlayHint.textContent = hint || '';
-    this.overlayHint.classList.toggle('hidden', !hint);
-    this.menuButtons.classList.toggle('hidden', !showMenu);
-    this.settingsPanel.classList.toggle('hidden', !showSettings);
-    this.overlayActions.classList.toggle('hidden', !showActions);
-    this.primaryAction.textContent = primary || 'Continue';
-    this.secondaryAction.classList.toggle('hidden', !secondary || !showActions);
-    if (secondary && showActions) this.secondaryAction.textContent = secondary;
-    this._overlayPrimaryAction = primaryAction || null;
-    this._overlaySecondaryAction = secondaryAction || null;
+  _showOverlay(options) {
+    this.overlayCtl.show(options);
   }
 
   _closeOverlay() {
-    this.overlay.classList.add('hidden');
+    this.overlayCtl.close();
   }
 
   _advanceOverlay() {
-    if (typeof this._overlayPrimaryAction === 'function') this._overlayPrimaryAction();
+    this.overlayCtl.advance();
   }
 
   _secondaryOverlayAction() {
-    if (typeof this._overlaySecondaryAction === 'function') this._overlaySecondaryAction();
-  }
-
-  _normalizeSceneLine(line) {
-    if (typeof line === 'string') {
-      return { speaker: 'Narrator', text: line };
-    }
-    return {
-      speaker: line.speaker || 'Narrator',
-      text: line.text || '',
-    };
-  }
-
-  _renderSceneLine(line) {
-    this.overlaySpeaker.textContent = line.speaker;
-    this.overlaySpeaker.classList.toggle('hidden', !line.speaker);
-    this.overlayBody.textContent = line.text;
+    this.overlayCtl.secondary();
   }
 
   _playScene(eyebrow, title, lines, onDone) {
     this.overlayMode = 'scene';
-    this.sceneLines = lines.map(line => this._normalizeSceneLine(line));
+    this.sceneLines = lines.map(normalizeSceneLine);
     this.sceneOnDone = onDone;
     this.uiMode = 'cutscene';
     this._showOverlay({
@@ -687,7 +657,7 @@ class Ramayana3DGame {
       if (this.sceneOnDone) this.sceneOnDone();
       return;
     }
-    this._renderSceneLine(this.sceneLines[0]);
+    this.overlayCtl.renderSceneLine(this.sceneLines[0]);
   }
 
   _startNewGame() {
