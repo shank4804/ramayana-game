@@ -1,5 +1,6 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { hasSave, writeSave, readSave, clearSave, loadSettings, saveSettings } from './engine/save.js';
+import { InputState } from './engine/input.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -231,9 +232,10 @@ class Ramayana3DGame {
     this.camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1200);
     this.clock = new THREE.Clock();
 
-    this.keys = new Set();
-    this.mouseButtons = new Set();
-    this.pointer = { dragging: false, lastX: 0, lastY: 0 };
+    this.input = new InputState();
+    this.keys = this.input.keys;
+    this.mouseButtons = this.input.mouseButtons;
+    this.pointer = this.input.pointer;
     this.toastTimer = 0;
     this.uiMode = 'title';
     this.overlayMode = 'menu';
@@ -1480,7 +1482,7 @@ class Ramayana3DGame {
   }
 
   _isPressed(...codes) {
-    return codes.some(code => this.keys.has(code));
+    return this.input.isPressed(...codes);
   }
 
   _updatePlayer(dt) {
