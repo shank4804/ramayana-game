@@ -1,7 +1,6 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
-import { hasSave, writeSave, readSave, clearSave } from './engine/save.js';
+import { hasSave, writeSave, readSave, clearSave, loadSettings, saveSettings } from './engine/save.js';
 
-const SETTINGS_KEY = 'ramayana-3d-settings-v1';
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
 const VEHICLE_RADIUS = 2.55;
@@ -295,25 +294,11 @@ class Ramayana3DGame {
   }
 
   _loadSettings() {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      return {
-        lookSensitivity: typeof parsed.lookSensitivity === 'number' ? parsed.lookSensitivity : 1,
-        quality: ['medium', 'high', 'epic'].includes(parsed.quality) ? parsed.quality : 'high',
-        invertLookY: !!parsed.invertLookY,
-      };
-    } catch {
-      return {
-        lookSensitivity: 1,
-        quality: 'high',
-        invertLookY: false,
-      };
-    }
+    return loadSettings();
   }
 
   _saveSettings() {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+    saveSettings(this.settings);
   }
 
   _syncSettingsUI() {

@@ -36,3 +36,32 @@ export function clearSave() {
     /* ignore */
   }
 }
+
+const SETTINGS_KEY = 'ramayana-3d-settings-v1';
+const SETTINGS_DEFAULTS = {
+  lookSensitivity: 1,
+  quality: 'high',
+  invertLookY: false,
+};
+
+export function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return {
+      lookSensitivity: typeof parsed.lookSensitivity === 'number' ? parsed.lookSensitivity : SETTINGS_DEFAULTS.lookSensitivity,
+      quality: ['medium', 'high', 'epic'].includes(parsed.quality) ? parsed.quality : SETTINGS_DEFAULTS.quality,
+      invertLookY: !!parsed.invertLookY,
+    };
+  } catch {
+    return { ...SETTINGS_DEFAULTS };
+  }
+}
+
+export function saveSettings(settings) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (err) {
+    console.warn('settings write failed', err);
+  }
+}
