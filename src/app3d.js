@@ -2,6 +2,7 @@ import * as THREE from '../node_modules/three/build/three.module.js';
 import { hasSave, writeSave, readSave, clearSave, loadSettings, saveSettings } from './engine/save.js';
 import { InputState } from './engine/input.js';
 import { ColliderRegistry } from './engine/collision.js';
+import { createRenderer } from './engine/renderer.js';
 
 const WORLD_LIMIT = 210;
 const PLAYER_RADIUS = 1.1;
@@ -216,15 +217,7 @@ class Ramayana3DGame {
     this.secondaryAction = document.getElementById('secondary-action');
     this.toast = document.getElementById('toast');
 
-    this.renderer = this._createRenderer();
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.renderer.domElement.id = 'viewport';
+    this.renderer = createRenderer();
     this.root.prepend(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -277,24 +270,6 @@ class Ramayana3DGame {
     this._showTitle();
     this._updateHUD();
     this._animate();
-  }
-
-  _createRenderer() {
-    const attempts = [
-      { antialias: true, powerPreference: 'high-performance' },
-      { antialias: false, powerPreference: 'default' },
-    ];
-
-    let lastError = null;
-    for (const options of attempts) {
-      try {
-        return new THREE.WebGLRenderer(options);
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    throw lastError || new Error('Unable to create a WebGL renderer');
   }
 
   _loadSettings() {
