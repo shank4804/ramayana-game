@@ -1,6 +1,6 @@
 # Ramayana Game Implementation Progress
 
-Last updated: 2026-05-23 (Step 2 landed)
+Last updated: 2026-05-23 (Step 3 landed)
 
 This is the handoff file for the next AI agent. Read this first and update it after every meaningful implementation step.
 
@@ -16,7 +16,7 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 |---|---|---|---|
 | 1 | Refactor scaffold (split `src/app3d.js` into modules) | **Done (pending browser smoke test)** — `app3d.js` shrunk from 2293 → ~880 lines, all 22 extraction commits landed; merged to `master` in PR #1 | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
 | 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | **Done (pending browser smoke test)** — `AssetLibrary` + `LoadingScreen` wired into boot flow; save key bumped to v4 | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md) |
-| 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | Not started | None yet |
+| 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | **Done (pending browser smoke test)** — composer pipeline live, quality tiers gate SSAO/bloom/shadow/fog/pixel-ratio | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md) |
 | 4 | Character pipeline (Rama GLTF + animation state machine) | Not started | None yet |
 | 5 | Enemy pipeline | Not started | None yet |
 | 6 | Ayodhya rebuild with GLTF assets | Not started | None yet |
@@ -25,9 +25,19 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 
 **Next AI's job:**
 
-1. **Validate Steps 1 + 2 in a real browser.** Run the full Step 1 smoke checklist (from `docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`). Then verify Step 2 specifically: loading screen appears on first boot, progress bar fills to 100%, screen fades out, title menu appears. With zero assets queued, the loading screen should display for ~400ms (the minimum-display-time floor) before transitioning.
-2. **Write a Step 3 plan** using `superpowers:writing-plans` against the parent spec. Step 3 is rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune).
-3. **Execute Step 3.**
+1. **Validate Steps 1 + 2 + 3 in a real browser.** All three steps are `node --check` clean and reviewed for correctness, but no WebGL context is available in the remote container they were authored in. For Step 3 specifically: verify the scene still renders (not black), confirm the quality-tier dropdown visibly changes things (medium turns SSAO off, epic widens fog far), and check window-resize doesn't warp anything.
+2. **Source CC0 character/environment GLBs** per the parent spec's "Asset Pipeline → Sources" section (Quaternius Ultimate Animated Character Pack for Rama and the rakshasa; Quaternius town/medieval packs for Ayodhya). Drop into `assets/characters/`, `assets/world/ayodhya/`, `assets/props/`.
+3. **Write a Step 4 plan** for the Rama character pipeline (GLTF + animation state machine) using `superpowers:writing-plans`.
+4. **Execute Step 4.**
+
+**Progress on Step 3 (rendering upgrades):** all 6 tasks complete.
+
+- [x] Task 1: `src/engine/renderer.js` exports new `createPostProcessing(renderer, scene, camera)` returning `{ composer, setQuality, setSize }`.
+- [x] Task 2: `app3d.js` instantiates `this.postFx`, swaps `renderer.render()` for `composer.render()`, calls `setSize` on resize.
+- [x] Task 3: `_applySettings` now also adjusts fog far per tier and calls `postFx.setQuality(level)`.
+- [x] Task 4: tonemapping exposure dropped 1.05 → 1.0 at high tier to compensate for bloom + SSAO; medium/epic kept as-is.
+- [x] Task 5: `node --check` clean. **Browser smoke test pending.**
+- [x] Task 6: this doc + architecture doc.
 
 **Progress on Step 2 (asset pipeline):** all 7 tasks complete.
 
@@ -224,11 +234,11 @@ Important interpretation:
 
 ## Best Next Step
 
-1. **Run the smoke checklist for Steps 1 + 2 in a real browser.**
-2. **Write a plan for AAA Phase 1 Step 3** (rendering upgrades — `EffectComposer`, bloom, SSAO, FXAA, ACES retune) using `superpowers:writing-plans` against the parent spec at `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
-3. **Execute Step 3** using `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
+1. **Run the smoke checklist for Steps 1 + 2 + 3 in a real browser.**
+2. **Source CC0 GLB assets** for Rama, the rakshasa enemy, and the Ayodhya district (Quaternius Ultimate Animated Character Pack + Ultimate Fantasy Town are the spec's primary recommendations).
+3. **Write + execute a Step 4 plan** for the Rama character pipeline (GLTF + animation state machine in `entities/player.js`).
 
-Steps 4 (Rama GLTF) and 6 (Ayodhya GLTF) will be the first to actually exercise the asset pipeline. Both depend on real `.glb` files being sourced (see the spec's "Asset Pipeline → Sources" section for the recommended CC0 pack list).
+Step 4 (Rama GLTF) and Step 6 (Ayodhya GLTF) will be the first steps to actually exercise the asset pipeline plumbing landed in Step 2.
 
 ## Files Touched In This Phase
 
