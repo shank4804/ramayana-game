@@ -4,7 +4,7 @@ import { AssetLibrary } from './engine/assets.js';
 import { LoadingScreen } from './engine/loading.js';
 import { InputState } from './engine/input.js';
 import { ColliderRegistry } from './engine/collision.js';
-import { createRenderer } from './engine/renderer.js';
+import { createRenderer, createPostProcessing } from './engine/renderer.js';
 import { installLighting } from './engine/lighting.js';
 import { updateThirdPersonCamera } from './engine/camera.js';
 import { World } from './world/world.js';
@@ -82,6 +82,8 @@ class Ramayana3DGame {
     this.scene.fog = new THREE.Fog(0x98b5df, 90, 320);
     this.camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1200);
     this.clock = new THREE.Clock();
+
+    this.postFx = createPostProcessing(this.renderer, this.scene, this.camera);
 
     this.input = new InputState();
     this.keys = this.input.keys;
@@ -213,12 +215,19 @@ class Ramayana3DGame {
         : Math.min(window.devicePixelRatio, 1.6);
 
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.toneMappingExposure = quality === 'epic' ? 1.14 : quality === 'medium' ? 0.98 : 1.05;
+    this.renderer.toneMappingExposure = quality === 'epic' ? 1.14 : quality === 'medium' ? 0.98 : 1.0;
 
     if (this.sun) {
-      const shadowSize = quality === 'medium' ? 1024 : quality === 'epic' ? 2048 : 1536;
+      const shadowSize = quality === 'medium' ? 1024 : quality === 'epic' ? 4096 : 2048;
       this.sun.shadow.mapSize.set(shadowSize, shadowSize);
     }
+
+    if (this.scene?.fog) {
+      this.scene.fog.far = quality === 'medium' ? 240 : quality === 'epic' ? 420 : 320;
+    }
+
+    this.postFx?.setQuality(quality);
+    this.postFx?.setSize(window.innerWidth, window.innerHeight);
   }
 
 
@@ -376,6 +385,7 @@ class Ramayana3DGame {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.postFx?.setSize(window.innerWidth, window.innerHeight);
     this._applySettings();
   }
 
@@ -584,7 +594,7 @@ class Ramayana3DGame {
     requestAnimationFrame(() => this._animate());
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this._update(dt);
-    this.renderer.render(this.scene, this.camera);
+    this.postFx.composer.render();
   }
 
   _update(dt) {
