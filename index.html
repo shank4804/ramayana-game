@@ -10,6 +10,18 @@
   <link rel="stylesheet" href="style.css?v=20260412b" />
 </head>
 <body>
+  <div id="loading-screen">
+    <div class="loading-card">
+      <div class="loading-eyebrow">Ramayana 3D</div>
+      <h1 class="loading-title">Loading</h1>
+      <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+      <div class="loading-label">0%</div>
+      <div class="loading-flavor">Stringing Rama's bow…</div>
+      <div class="loading-error hidden"></div>
+      <button class="loading-retry hidden">Retry</button>
+    </div>
+  </div>
+
   <div id="app-root">
     <div id="hud">
       <div id="brand-card" class="card">
@@ -108,6 +120,14 @@
     <div id="toast" class="toast hidden">Mission Updated</div>
   </div>
 
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./node_modules/three/build/three.module.js",
+        "three/addons/": "./node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
   <script type="module" src="src/bootstrap.js?v=20260412c"></script>
 </body>
 </html>

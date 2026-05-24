@@ -1,5 +1,7 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { hasSave, writeSave, readSave, clearSave, loadSettings, saveSettings } from './engine/save.js';
+import { AssetLibrary } from './engine/assets.js';
+import { LoadingScreen } from './engine/loading.js';
 import { InputState } from './engine/input.js';
 import { ColliderRegistry } from './engine/collision.js';
 import { createRenderer } from './engine/renderer.js';
@@ -160,9 +162,34 @@ class Ramayana3DGame {
     });
 
     this._bindEvents();
-    this._showTitle();
     this._updateHUD();
     this._animate();
+
+    this._bootAssets();
+  }
+
+  _bootAssets() {
+    const loadingEl = document.getElementById('loading-screen');
+    this.loadingScreen = loadingEl ? new LoadingScreen(loadingEl) : null;
+    this.loadingScreen?.show();
+
+    this.assets = new AssetLibrary({
+      onProgress: (fraction, url) => this.loadingScreen?.setProgress(fraction, url),
+      onLoad: () => {
+        this.loadingScreen?.hide();
+        this._showTitle();
+      },
+      onError: (url) => {
+        console.error('asset load failed', url);
+        this.loadingScreen?.showError(url, () => this._bootAssets());
+      },
+    });
+
+    // Step 4 and Step 6 will queue asset loads here before startAll().
+    // Example (do not enable until those steps land):
+    //   this.assets.loadGLTF('rama', './assets/characters/rama.glb');
+
+    this.assets.startAll();
   }
 
   _loadSettings() {
