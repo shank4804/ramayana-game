@@ -235,10 +235,49 @@ Important interpretation:
 ## Best Next Step
 
 1. **Run the smoke checklist for Steps 1 + 2 + 3 in a real browser.**
-2. **Source CC0 GLB assets** for Rama, the rakshasa enemy, and the Ayodhya district (Quaternius Ultimate Animated Character Pack + Ultimate Fantasy Town are the spec's primary recommendations).
+2. **Source CC0 GLB assets** — see the section below for concrete download links and what to avoid.
 3. **Write + execute a Step 4 plan** for the Rama character pipeline (GLTF + animation state machine in `entities/player.js`).
 
 Step 4 (Rama GLTF) and Step 6 (Ayodhya GLTF) will be the first steps to actually exercise the asset pipeline plumbing landed in Step 2.
+
+## Sourcing GLB Assets (For The User)
+
+You do not need to author 3D models yourself. The Phase 1 spec is built around using existing free CC0 assets. Making rigged animated characters in Blender is 2–3 months of full-time learning; the open-source community has already done it.
+
+### Recommended downloads
+
+1. **[Quaternius — Ultimate Animated Character Pack](https://quaternius.com/packs/ultimateanimatedcharacter.html)** (CC0) — humanoid base with idle/walk/run/attack/jump/death animations baked in. Recolor the materials in code to make Rama; same base retextured darker (with horns/claws) becomes the rakshasa. Covers Step 4 + Step 5.
+2. **[Quaternius — Ultimate Fantasy Town](https://quaternius.com/packs/ultimatefantasytown.html)** or **[Ultimate Medieval](https://quaternius.com/packs/ultimatemedieval.html)** (CC0) — buildings, walls, gates, trees, fountains for Ayodhya in Step 6. Pick warm-stone-and-gold pieces for the saffron palace look.
+
+Drop them into the folder structure the spec already defines:
+
+```
+assets/
+  characters/rama.glb
+  characters/rakshasa.glb
+  world/ayodhya/palace.glb
+  world/ayodhya/house.glb
+  ... etc
+```
+
+### Other CC0 sources
+
+- **[Poly Pizza](https://poly.pizza)** — aggregator across many creators; filter to CC0
+- **[Kenney.nl](https://kenney.nl)** — clean low-poly packs, all CC0
+- **[Sketchfab](https://sketchfab.com)** — huge library; filter to "Downloadable" + "CC0"
+
+### What NOT to do
+
+- **Don't make rigged animated characters yourself** unless you already know Blender. Static props (trees, walls) are doable in a weekend, characters are the wall.
+- **Be skeptical of AI 3D generators** (Meshy, Luma Genie, Tripo) for characters — outputs are still rough/uncanny. Fine for one specific prop you can't find.
+
+### Verify the file before dropping it in
+
+A GLB is a single binary file (not a `.gltf` text file plus a `.bin` sidecar). To confirm a character has bones and animations, drag it into **[gltf.report](https://gltf.report)** — it shows the animation clip names. You'll need those names in Step 4 (the pack might call its walk cycle `Walk_Cycle`, `walking`, `Armature|Walk`, etc.) so the state machine can map them to our canonical `walk` / `run` / `attack` names.
+
+### When ready
+
+Tell the next AI which packs were downloaded and what's in `assets/`. The Step 4 plan needs the specific clip names, mesh hierarchy, and scale from the actual files; without those it's guessing.
 
 ## Files Touched In This Phase
 
