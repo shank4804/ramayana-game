@@ -1,4 +1,15 @@
-const SAVE_KEY = 'ramayana-3d-openworld-v3';
+const SAVE_KEY = 'ramayana-3d-openworld-v4';
+const LEGACY_SAVE_KEYS = ['ramayana-3d-openworld-v3'];
+
+// One-time cleanup of pre-v4 saves. Schema changed substantially after the
+// AAA Phase 1 refactor; old saves are discarded rather than migrated.
+try {
+  for (const key of LEGACY_SAVE_KEYS) {
+    if (localStorage.getItem(key) !== null) localStorage.removeItem(key);
+  }
+} catch (err) {
+  /* ignore — localStorage may be unavailable */
+}
 
 export function hasSave() {
   try {

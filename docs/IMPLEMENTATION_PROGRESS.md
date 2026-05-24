@@ -1,6 +1,6 @@
 # Ramayana Game Implementation Progress
 
-Last updated: 2026-05-23
+Last updated: 2026-05-23 (Step 2 landed)
 
 This is the handoff file for the next AI agent. Read this first and update it after every meaningful implementation step.
 
@@ -14,8 +14,8 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 
 | # | Step | Status | Plan |
 |---|---|---|---|
-| 1 | Refactor scaffold (split `src/app3d.js` into modules) | **Done (pending browser smoke test)** — `app3d.js` shrunk from 2293 → ~880 lines, all 22 extraction commits landed | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
-| 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | Not started | None yet |
+| 1 | Refactor scaffold (split `src/app3d.js` into modules) | **Done (pending browser smoke test)** — `app3d.js` shrunk from 2293 → ~880 lines, all 22 extraction commits landed; merged to `master` in PR #1 | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
+| 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | **Done (pending browser smoke test)** — `AssetLibrary` + `LoadingScreen` wired into boot flow; save key bumped to v4 | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md) |
 | 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | Not started | None yet |
 | 4 | Character pipeline (Rama GLTF + animation state machine) | Not started | None yet |
 | 5 | Enemy pipeline | Not started | None yet |
@@ -25,8 +25,19 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 
 **Next AI's job:**
 
-1. **Validate Step 1 in a real browser** before starting Step 2. Run the full smoke checklist from the plan's "Conventions Used Throughout This Plan" section (`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`). The refactor commits were verified only with `node --check` plus careful verbatim moves — they were authored in a remote container that cannot create a WebGL context.
-2. **Write a Step 2 plan** using `superpowers:writing-plans` against the parent spec, then execute it. Step 2 is the asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen).
+1. **Validate Steps 1 + 2 in a real browser.** Run the full Step 1 smoke checklist (from `docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`). Then verify Step 2 specifically: loading screen appears on first boot, progress bar fills to 100%, screen fades out, title menu appears. With zero assets queued, the loading screen should display for ~400ms (the minimum-display-time floor) before transitioning.
+2. **Write a Step 3 plan** using `superpowers:writing-plans` against the parent spec. Step 3 is rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune).
+3. **Execute Step 3.**
+
+**Progress on Step 2 (asset pipeline):** all 7 tasks complete.
+
+- [x] Task 1: `src/engine/assets.js` — `AssetLibrary` wrapping `LoadingManager` + `GLTFLoader`, with `loadGLTF`, `get`, `clone`, `getAnimations`, `startAll`.
+- [x] Task 2: `src/engine/loading.js` — `LoadingScreen` controller (show/setProgress/hide/showError) with min-display-time gate and flavor-line rotation.
+- [x] Task 3: `<div id="loading-screen">` in `index.html` + matching styles in `style.css`. Importmap added so bare `'three'` / `'three/addons/'` specifiers resolve in the browser (required by GLTFLoader's internal imports).
+- [x] Task 4: save key bumped `v3` → `v4` in `src/engine/save.js`; v3 saves silently discarded on module load.
+- [x] Task 5: `app3d.js` boot flow now goes `loading screen show → assets.startAll → onLoad → loading screen hide + title menu`. Zero assets queued today; Steps 4/6 will add real `loadGLTF` calls.
+- [x] Task 6: `node --check` clean across all changed files. **Browser smoke test still pending** (remote container has no WebGL).
+- [x] Task 7: this doc + architecture doc.
 
 **Progress on Step 1 (refactor scaffold):** all 23 tasks complete.
 
@@ -213,9 +224,11 @@ Important interpretation:
 
 ## Best Next Step
 
-1. **Run the Step 1 smoke checklist in a real browser.** All 23 extraction commits are in `node --check` clean and reviewed for verbatim correctness, but no browser test was possible in the remote container they were authored in.
-2. **Write a plan for AAA Phase 1 Step 2** (asset pipeline — `LoadingManager`, `GLTFLoader`, loading screen) using `superpowers:writing-plans` against the parent spec at `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
-3. **Execute Step 2** using `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
+1. **Run the smoke checklist for Steps 1 + 2 in a real browser.**
+2. **Write a plan for AAA Phase 1 Step 3** (rendering upgrades — `EffectComposer`, bloom, SSAO, FXAA, ACES retune) using `superpowers:writing-plans` against the parent spec at `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
+3. **Execute Step 3** using `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
+
+Steps 4 (Rama GLTF) and 6 (Ayodhya GLTF) will be the first to actually exercise the asset pipeline. Both depend on real `.glb` files being sourced (see the spec's "Asset Pipeline → Sources" section for the recommended CC0 pack list).
 
 ## Files Touched In This Phase
 
