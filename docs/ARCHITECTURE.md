@@ -1,6 +1,6 @@
 # Ramayana Game Architecture
 
-Last updated: 2026-05-23
+Last updated: 2026-05-23 (Step 2 landed)
 
 ## Overview
 
@@ -38,12 +38,14 @@ src/
   bootstrap.js                       boot loader, surfaces failures
   app3d.js                           orchestrator + mission flow + event wiring
   engine/
-    save.js                          localStorage save/load + settings persistence
+    save.js                          localStorage save/load + settings persistence (key v4)
     input.js                         InputState (keys/mouse/pointer)
     collision.js                     ColliderRegistry (AABB)
     renderer.js                      WebGLRenderer creation + config
     lighting.js                      sun + hemisphere lights
     camera.js                        third-person follow update
+    assets.js                        AssetLibrary: LoadingManager + GLTFLoader + cache
+    loading.js                       LoadingScreen DOM controller
   world/
     world.js                         district orchestrator (sky/ground/districts)
     decor.js                         shared primitive builders (tree, rock, lamp, wall, etc.)
@@ -244,9 +246,24 @@ Those elements live in [index.html](/Users/shashank/workspace/ramayana-game/inde
 - `Overlay` in `src/ui/overlay.js` — cutscene/dialogue overlay, scene line rendering
 - `TitleMenu` in `src/ui/menu.js` — main menu nav, focus management, settings UI sync
 
+## Asset Pipeline
+
+GLTF and texture loading goes through a shared `LoadingManager` owned by `AssetLibrary` in `src/engine/assets.js`:
+
+- `loadGLTF(key, url)` — queues a GLB load, caches the result by key, returns a promise.
+- `get(key)` / `getAnimations(key)` — read cached GLB scene root + animation clips.
+- `clone(key)` — `SkeletonUtils.clone` of the cached scene for instancing skinned meshes.
+- `startAll()` — signals "no more queues coming" so `onLoad` fires even when zero loads were registered.
+
+`LoadingScreen` in `src/engine/loading.js` wraps the `#loading-screen` DOM card and exposes `show()`, `setProgress(fraction, label)`, `hide()`, `showError(url, retry)`. It has a 400ms minimum display floor so the screen never flashes.
+
+`Ramayana3DGame._bootAssets()` wires them: show the loading screen, hook `onProgress` into `setProgress`, hook `onLoad` into `hide() + _showTitle()`, hook `onError` into `showError()`. Today no `loadGLTF` calls are queued — Step 4 (Rama) and Step 6 (Ayodhya) will add them.
+
+`index.html` includes an importmap (`"three"` → `./node_modules/three/build/three.module.js`, `"three/addons/"` → `./node_modules/three/examples/jsm/`) so `GLTFLoader`'s internal bare imports resolve in the browser without a bundler.
+
 ## Persistence
 
-Save/load is handled with `localStorage` in `src/engine/save.js` (`hasSave`, `readSave`, `writeSave`, `clearSave`, `loadSettings`, `saveSettings`). The orchestrator builds the save payload before calling `writeSave`.
+Save/load is handled with `localStorage` in `src/engine/save.js` (`hasSave`, `readSave`, `writeSave`, `clearSave`, `loadSettings`, `saveSettings`). The orchestrator builds the save payload before calling `writeSave`. Save key is `ramayana-3d-openworld-v4`; legacy `v3` blobs are silently discarded on module load.
 
 Current save key:
 
@@ -292,4 +309,4 @@ The new 3D runtime is materially closer to a GTA-like prototype than the earlier
 - no NPC dialogue actors in the world
 - runtime still depends on WebGL support in the browser
 
-The next meaningful technical step is AAA Phase 1 Step 2: the asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen). See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
+The next meaningful technical step is AAA Phase 1 Step 3: rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune). See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
