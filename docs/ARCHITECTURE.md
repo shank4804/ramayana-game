@@ -1,6 +1,6 @@
 # Ramayana Game Architecture
 
-Last updated: 2026-05-23 (Step 2 landed)
+Last updated: 2026-05-23 (Step 3 landed)
 
 ## Overview
 
@@ -41,7 +41,7 @@ src/
     save.js                          localStorage save/load + settings persistence (key v4)
     input.js                         InputState (keys/mouse/pointer)
     collision.js                     ColliderRegistry (AABB)
-    renderer.js                      WebGLRenderer creation + config
+    renderer.js                      WebGLRenderer + EffectComposer pipeline (bloom/SSAO/FXAA/output)
     lighting.js                      sun + hemisphere lights
     camera.js                        third-person follow update
     assets.js                        AssetLibrary: LoadingManager + GLTFLoader + cache
@@ -246,6 +246,23 @@ Those elements live in [index.html](/Users/shashank/workspace/ramayana-game/inde
 - `Overlay` in `src/ui/overlay.js` — cutscene/dialogue overlay, scene line rendering
 - `TitleMenu` in `src/ui/menu.js` — main menu nav, focus management, settings UI sync
 
+## Rendering Pipeline
+
+`src/engine/renderer.js` exports two entry points:
+
+- `createRenderer()` — builds the `WebGLRenderer` with shadow map, ACES tonemapping, sRGB output, fallback options.
+- `createPostProcessing(renderer, scene, camera)` — builds an `EffectComposer` and returns `{ composer, setQuality(level), setSize(w, h) }`.
+
+The composer pipeline runs:
+
+1. `RenderPass` — the main scene
+2. `SSAOPass` — toggled by `setQuality` (off on `medium`, on for `high` / `epic`)
+3. `UnrealBloomPass` — threshold 0.9, radius 0.4, strength scales with tier (0.38 / 0.50 / 0.62)
+4. `ShaderPass(FXAAShader)` — resolution uniform updated on `setSize`
+5. `OutputPass` — converts linear render targets to sRGB for display
+
+`Ramayana3DGame._animate` calls `this.postFx.composer.render()` instead of `renderer.render`. `_handleResize` forwards to `postFx.setSize`. `_applySettings` calls `postFx.setQuality(quality)` whenever the settings tier changes, and also adjusts `scene.fog.far` (240 / 320 / 420) and the directional sun's shadow map size (1024² / 2048² / 4096²).
+
 ## Asset Pipeline
 
 GLTF and texture loading goes through a shared `LoadingManager` owned by `AssetLibrary` in `src/engine/assets.js`:
@@ -309,4 +326,4 @@ The new 3D runtime is materially closer to a GTA-like prototype than the earlier
 - no NPC dialogue actors in the world
 - runtime still depends on WebGL support in the browser
 
-The next meaningful technical step is AAA Phase 1 Step 3: rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune). See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
+The next meaningful technical step is AAA Phase 1 Step 4: the Rama character pipeline (GLTF + animation state machine). See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`. Steps 4 and 6 are the first to exercise the asset pipeline plumbing landed in Step 2; both depend on CC0 GLB assets being sourced first.
