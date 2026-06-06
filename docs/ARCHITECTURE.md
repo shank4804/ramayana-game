@@ -1,6 +1,6 @@
 # Ramayana Game Architecture
 
-Last updated: 2026-06-06 (Step 4a landed)
+Last updated: 2026-06-06 (Step 5a landed)
 
 ## Overview
 
@@ -346,4 +346,4 @@ The new 3D runtime is materially closer to a GTA-like prototype than the earlier
 - no NPC dialogue actors in the world
 - runtime still depends on WebGL support in the browser
 
-The next meaningful technical step is AAA Phase 1 Step 5: the enemy character pipeline. The same animation state machine and GLB-aware-with-primitive-fallback pattern that landed for the player in Step 4a applies directly to the rakshasa in `src/entities/enemy.js`. See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`. Step 4b (drop `rama.glb` in, validate) and Step 6 (Ayodhya district GLBs) both still depend on CC0 assets being sourced first.
+The next meaningful technical step is AAA Phase 1 Step 6: the Ayodhya district GLB rebuild. Step 4a + 5a landed the character pipeline infrastructure; Step 4b + 5b drop in actual GLBs (blocked on user sourcing CC0 packs). Step 6 is structurally different — it swaps `src/world/ayodhya.js`'s primitive decor builders for GLB placements with their own bounding-box collision registration. See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`.
