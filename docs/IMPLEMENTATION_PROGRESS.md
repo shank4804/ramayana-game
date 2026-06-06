@@ -1,6 +1,6 @@
 # Ramayana Game Implementation Progress
 
-Last updated: 2026-06-06 (Step 4a landed; 4b awaits GLB)
+Last updated: 2026-06-06 (Steps 4a + 5a landed; 4b/5b await GLBs)
 
 This is the handoff file for the next AI agent. Read this first and update it after every meaningful implementation step.
 
@@ -19,7 +19,8 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 | 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | **Done (pending browser smoke test)** — composer pipeline live, quality tiers gate SSAO/bloom/shadow/fog/pixel-ratio | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md) |
 | 4a | Character pipeline — infrastructure (animation state machine + GLB-aware player loader with primitive fallback) | **Done (pending browser smoke test)** | [`docs/superpowers/plans/2026-06-06-aaa-phase-1-step-4-rama-pipeline.md`](superpowers/plans/2026-06-06-aaa-phase-1-step-4-rama-pipeline.md) |
 | 4b | Character pipeline — drop actual `rama.glb` into `assets/characters/`, map clip names, validate transitions | **Blocked on user** — needs CC0 GLB sourced (see asset sourcing section below) | — |
-| 5 | Enemy pipeline | Not started | None yet |
+| 5a | Enemy pipeline — infrastructure (state machine + GLB-aware loader for rakshasa with primitive fallback) | **Done (pending browser smoke test)** | — (same plan + pattern as 4a) |
+| 5b | Enemy pipeline — drop actual `rakshasa.glb` into `assets/characters/`, validate | **Blocked on user** | — |
 | 6 | Ayodhya rebuild with GLTF assets | Not started | None yet |
 | 7 | Polish pass (palette, attribution) | Not started | None yet |
 | 8 | Final verification across quality tiers | Not started | None yet |
@@ -30,6 +31,14 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 2. **Source the CC0 GLBs** per the asset sourcing section below. Once `rama.glb` is in place, reload — the loading screen will briefly show the file being fetched, then the skinned Rama replaces the primitive one. If clip names don't match the defaults, edit `DEFAULT_CLIP_ALIASES` in `src/engine/animation.js`.
 3. **Repeat the pattern for Step 5 (rakshasa enemy):** the animation state machine is reusable; `src/entities/enemy.js` needs an equivalent `gltf` optional path. Most of the work is mirroring what landed in `entities/player.js`.
 4. **Step 6 (Ayodhya GLBs):** drop world GLBs into `assets/world/ayodhya/` and rewire `src/world/ayodhya.js` to use them instead of `decor.addBuilding` etc.
+
+**Progress on Step 5a (enemy pipeline infrastructure):**
+
+- [x] `src/entities/enemy.js` — `createEnemy(type, position, gltf?)` factory branches to skinned implementation when `gltf` provided. `updateEnemies` derives walk/run/attack/hit/death from existing distance/cooldown/flash state. `spawnMissionEnemies` accepts a `gltfByType` map.
+- [x] `src/app3d.js` — HEAD-checks `./assets/characters/rakshasa.glb`; `_spawnMissionEnemies` passes the cached GLB through to `spawnMissionEnemies`.
+- [x] `node --check` clean. **Browser smoke test pending** (and skinned-path validation needs the GLB).
+
+Only `rakshasa` is wired today since the Phase 1 spec authors only one enemy archetype. `guard` / `brute` / `boss` types remain primitive. If you want them skinned later, the easiest path is to either drop separate GLBs (`guard.glb`, etc.) and extend the cache lookup in `_spawnMissionEnemies`, or reuse the rakshasa GLB with a per-type color override.
 
 **Progress on Step 4a (Rama pipeline infrastructure):** all 5 tasks complete.
 
@@ -247,11 +256,9 @@ Important interpretation:
 
 ## Best Next Step
 
-1. **Run the smoke checklist for Steps 1 + 2 + 3 in a real browser.**
-2. **Source CC0 GLB assets** — see the section below. Drop `rama.glb` in `assets/characters/` and reload to complete Step 4b.
-3. **Mirror Step 4a's pattern for the rakshasa enemy** (Step 5) — same state machine, same `gltf` optional path, applied to `src/entities/enemy.js`.
-
-Step 4a landed the infrastructure for the entire character pipeline. Step 5 reuses it; Step 6 (Ayodhya GLBs) is independent (environment assets, no animation state machine).
+1. **Run the smoke checklist for Steps 1 + 2 + 3 + 4a + 5a in a real browser.** Without GLBs present, the game must look and play identically to the pre-4a behavior — both player and enemy primitive paths are preserved unchanged.
+2. **Source CC0 GLBs** — see the section below. Drop `rama.glb` and `rakshasa.glb` into `assets/characters/` to complete Steps 4b + 5b.
+3. **Step 6 (Ayodhya GLBs)** is the remaining content step — it needs a separate plan because environment assets place at specific coordinates with bounding-box collision, which is structurally different from the swap-the-mesh pattern used for characters.
 
 ## Sourcing GLB Assets (For The User)
 

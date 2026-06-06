@@ -195,6 +195,11 @@ class Ramayana3DGame {
         console.warn('rama.glb load failed, falling back to primitive', err);
       });
     }
+    if (await this._assetExists('./assets/characters/rakshasa.glb')) {
+      this.assets.loadGLTF('rakshasa', './assets/characters/rakshasa.glb').catch((err) => {
+        console.warn('rakshasa.glb load failed, falling back to primitive', err);
+      });
+    }
 
     this.assets.startAll();
   }
@@ -815,7 +820,10 @@ class Ramayana3DGame {
 
   _spawnMissionEnemies(savedEnemies = null) {
     this._clearEnemies();
-    this.enemies = spawnMissionEnemies(this.activeMission, savedEnemies, this.scene);
+    const gltfByType = {};
+    const rakshasaGltf = this.assets?.get('rakshasa');
+    if (rakshasaGltf) gltfByType.rakshasa = rakshasaGltf;
+    this.enemies = spawnMissionEnemies(this.activeMission, savedEnemies, this.scene, gltfByType);
   }
 
   _clearEnemies() {
