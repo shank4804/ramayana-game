@@ -170,7 +170,7 @@ class Ramayana3DGame {
     this._bootAssets();
   }
 
-  _bootAssets() {
+  async _bootAssets() {
     const loadingEl = document.getElementById('loading-screen');
     this.loadingScreen = loadingEl ? new LoadingScreen(loadingEl) : null;
     this.loadingScreen?.show();
@@ -178,6 +178,7 @@ class Ramayana3DGame {
     this.assets = new AssetLibrary({
       onProgress: (fraction, url) => this.loadingScreen?.setProgress(fraction, url),
       onLoad: () => {
+        this._swapInLoadedAssets();
         this.loadingScreen?.hide();
         this._showTitle();
       },
@@ -187,11 +188,35 @@ class Ramayana3DGame {
       },
     });
 
-    // Step 4 and Step 6 will queue asset loads here before startAll().
-    // Example (do not enable until those steps land):
-    //   this.assets.loadGLTF('rama', './assets/characters/rama.glb');
+    // Optional GLB assets. A missing file is the default state today —
+    // skip silently rather than firing the retry overlay.
+    if (await this._assetExists('./assets/characters/rama.glb')) {
+      this.assets.loadGLTF('rama', './assets/characters/rama.glb').catch((err) => {
+        console.warn('rama.glb load failed, falling back to primitive', err);
+      });
+    }
 
     this.assets.startAll();
+  }
+
+  async _assetExists(url) {
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  _swapInLoadedAssets() {
+    const ramaGltf = this.assets.get('rama');
+    if (ramaGltf && !this.player.stateMachine) {
+      const oldGroup = this.player.group;
+      const spawn = oldGroup.position.clone();
+      this.scene.remove(oldGroup);
+      this.player = createPlayer(spawn, ramaGltf);
+      this.scene.add(this.player.group);
+    }
   }
 
   _loadSettings() {

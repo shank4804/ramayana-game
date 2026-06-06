@@ -1,6 +1,6 @@
 # Ramayana Game Implementation Progress
 
-Last updated: 2026-05-23 (Step 3 landed)
+Last updated: 2026-06-06 (Step 4a landed; 4b awaits GLB)
 
 This is the handoff file for the next AI agent. Read this first and update it after every meaningful implementation step.
 
@@ -17,7 +17,8 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 | 1 | Refactor scaffold (split `src/app3d.js` into modules) | **Done (pending browser smoke test)** — `app3d.js` shrunk from 2293 → ~880 lines, all 22 extraction commits landed; merged to `master` in PR #1 | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
 | 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | **Done (pending browser smoke test)** — `AssetLibrary` + `LoadingScreen` wired into boot flow; save key bumped to v4 | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md) |
 | 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | **Done (pending browser smoke test)** — composer pipeline live, quality tiers gate SSAO/bloom/shadow/fog/pixel-ratio | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md) |
-| 4 | Character pipeline (Rama GLTF + animation state machine) | Not started | None yet |
+| 4a | Character pipeline — infrastructure (animation state machine + GLB-aware player loader with primitive fallback) | **Done (pending browser smoke test)** | [`docs/superpowers/plans/2026-06-06-aaa-phase-1-step-4-rama-pipeline.md`](superpowers/plans/2026-06-06-aaa-phase-1-step-4-rama-pipeline.md) |
+| 4b | Character pipeline — drop actual `rama.glb` into `assets/characters/`, map clip names, validate transitions | **Blocked on user** — needs CC0 GLB sourced (see asset sourcing section below) | — |
 | 5 | Enemy pipeline | Not started | None yet |
 | 6 | Ayodhya rebuild with GLTF assets | Not started | None yet |
 | 7 | Polish pass (palette, attribution) | Not started | None yet |
@@ -25,10 +26,22 @@ The spec breaks Phase 1 into 8 implementation steps. Each step is independently 
 
 **Next AI's job:**
 
-1. **Validate Steps 1 + 2 + 3 in a real browser.** All three steps are `node --check` clean and reviewed for correctness, but no WebGL context is available in the remote container they were authored in. For Step 3 specifically: verify the scene still renders (not black), confirm the quality-tier dropdown visibly changes things (medium turns SSAO off, epic widens fog far), and check window-resize doesn't warp anything.
-2. **Source CC0 character/environment GLBs** per the parent spec's "Asset Pipeline → Sources" section (Quaternius Ultimate Animated Character Pack for Rama and the rakshasa; Quaternius town/medieval packs for Ayodhya). Drop into `assets/characters/`, `assets/world/ayodhya/`, `assets/props/`.
-3. **Write a Step 4 plan** for the Rama character pipeline (GLTF + animation state machine) using `superpowers:writing-plans`.
-4. **Execute Step 4.**
+1. **Validate Steps 1 + 2 + 3 + 4a in a real browser.** Steps 1–3 are unchanged from prior sessions; Step 4a adds a swap path that only activates if `assets/characters/rama.glb` exists. Without the GLB the game must look and play exactly like Step 3.
+2. **Source the CC0 GLBs** per the asset sourcing section below. Once `rama.glb` is in place, reload — the loading screen will briefly show the file being fetched, then the skinned Rama replaces the primitive one. If clip names don't match the defaults, edit `DEFAULT_CLIP_ALIASES` in `src/engine/animation.js`.
+3. **Repeat the pattern for Step 5 (rakshasa enemy):** the animation state machine is reusable; `src/entities/enemy.js` needs an equivalent `gltf` optional path. Most of the work is mirroring what landed in `entities/player.js`.
+4. **Step 6 (Ayodhya GLBs):** drop world GLBs into `assets/world/ayodhya/` and rewire `src/world/ayodhya.js` to use them instead of `decor.addBuilding` etc.
+
+**Progress on Step 4a (Rama pipeline infrastructure):** all 5 tasks complete.
+
+- [x] Task 1: `src/engine/animation.js` — `AnimationStateMachine` + `buildClipMap` + `DEFAULT_CLIP_ALIASES` covering common Quaternius / Mixamo / Armature naming conventions. One-shot states (`attack` / `dodge` / `hit`) clamp and auto-return on clip finish via the mixer's `'finished'` event.
+- [x] Task 2: `src/entities/player.js` — `createPlayer(spawn, gltf?)` factory branches to a skinned implementation when `gltf` is supplied; `updatePlayerAnimation` checks for `player.stateMachine` and routes through it, otherwise runs the existing primitive procedural animation unchanged.
+- [x] Task 3: `src/app3d.js` — `_bootAssets` HEAD-checks `./assets/characters/rama.glb`; queues `loadGLTF('rama', ...)` if present, silently skips if missing. On load, `_swapInLoadedAssets()` removes the primitive player and instantiates the skinned one in place at the same world position.
+- [x] Task 4: `node --check` clean. **Browser smoke test pending** (and the "GLB path actually animates" branch can't be tested at all until a GLB is supplied).
+- [x] Task 5: this doc + architecture doc.
+
+**Step 4b — what's blocked on the user:**
+
+Drop a Rama GLB into `assets/characters/rama.glb` (see the asset sourcing section below for download links and verification steps). On next boot the game will auto-detect it and swap in. If the pack's clip names don't match any of the `DEFAULT_CLIP_ALIASES` in `src/engine/animation.js`, add them — the file is structured so each canonical state has its own candidates array and adding a new pack's name is a one-line edit per state.
 
 **Progress on Step 3 (rendering upgrades):** all 6 tasks complete.
 
@@ -235,10 +248,10 @@ Important interpretation:
 ## Best Next Step
 
 1. **Run the smoke checklist for Steps 1 + 2 + 3 in a real browser.**
-2. **Source CC0 GLB assets** — see the section below for concrete download links and what to avoid.
-3. **Write + execute a Step 4 plan** for the Rama character pipeline (GLTF + animation state machine in `entities/player.js`).
+2. **Source CC0 GLB assets** — see the section below. Drop `rama.glb` in `assets/characters/` and reload to complete Step 4b.
+3. **Mirror Step 4a's pattern for the rakshasa enemy** (Step 5) — same state machine, same `gltf` optional path, applied to `src/entities/enemy.js`.
 
-Step 4 (Rama GLTF) and Step 6 (Ayodhya GLTF) will be the first steps to actually exercise the asset pipeline plumbing landed in Step 2.
+Step 4a landed the infrastructure for the entire character pipeline. Step 5 reuses it; Step 6 (Ayodhya GLBs) is independent (environment assets, no animation state machine).
 
 ## Sourcing GLB Assets (For The User)
 

@@ -1,4 +1,6 @@
 import * as THREE from '../../node_modules/three/build/three.module.js';
+import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
+import { AnimationStateMachine, buildClipMap } from '../engine/animation.js';
 
 const PLAYER_RADIUS = 1.1;
 const TMP_A = new THREE.Vector3();
@@ -19,7 +21,9 @@ function dampAngle(current, target, lambda, dt) {
   return current + shortestAngleDiff(current, target) * (1 - Math.exp(-lambda * dt));
 }
 
-export function createPlayer(spawn) {
+export function createPlayer(spawn, gltf = null) {
+  if (gltf) return createSkinnedPlayer(spawn, gltf);
+
   const group = new THREE.Group();
   group.position.copy(spawn);
 
@@ -142,6 +146,60 @@ export function createPlayer(spawn) {
       sword,
       bow,
     },
+    mixer: null,
+    stateMachine: null,
+  };
+}
+
+function createSkinnedPlayer(spawn, gltf) {
+  const root = skeletonClone(gltf.scene);
+  root.traverse((node) => {
+    if (node.isMesh) {
+      node.castShadow = true;
+      node.receiveShadow = true;
+    }
+  });
+
+  const group = new THREE.Group();
+  group.position.copy(spawn);
+  group.add(root);
+
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.85, 24),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.03;
+  group.add(shadow);
+
+  const mixer = new THREE.AnimationMixer(root);
+  const clipMap = buildClipMap(gltf.animations);
+  const stateMachine = new AnimationStateMachine(mixer, clipMap);
+  stateMachine.setState('idle');
+
+  return {
+    group,
+    hp: 100,
+    maxHp: 100,
+    radius: PLAYER_RADIUS,
+    walkSpeed: 7.5,
+    sprintSpeed: 12.5,
+    velocity: new THREE.Vector3(),
+    moveDir: new THREE.Vector3(0, 0, 1),
+    swordCooldown: 0,
+    bowCooldown: 0,
+    dodgeCooldown: 0,
+    invulnerable: 0,
+    attackTime: 0,
+    bowPose: 0,
+    dodgeTime: 0,
+    walkPhase: 0,
+    inVehicle: false,
+    parts: null,
+    mixer,
+    stateMachine,
+    _lastAttackTime: 0,
+    _lastDodgeTime: 0,
   };
 }
 
@@ -195,6 +253,11 @@ export function updatePlayer(player, dt, ctx) {
 }
 
 export function updatePlayerAnimation(player, dt, ctx) {
+  if (player.stateMachine) {
+    updateSkinnedPlayerAnimation(player, dt, ctx);
+    return;
+  }
+
   const speed = player.inVehicle
     ? Math.abs(ctx.vehicleSpeed)
     : Math.hypot(player.velocity.x, player.velocity.z);
@@ -217,6 +280,46 @@ export function updatePlayerAnimation(player, dt, ctx) {
   player.parts.rightArm.rotation.x = armSwing * 0.6 + attackSwing - bowPose;
   player.parts.torso.position.y = 1.93 + Math.sin(player.walkPhase * 2) * Math.min(0.08, speed * 0.01);
   player.parts.head.rotation.y = ctx.isAiming ? Math.sin(ctx.elapsedTime * 0.7) * 0.08 : 0;
+}
+
+function updateSkinnedPlayerAnimation(player, dt, ctx) {
+  player.stateMachine.update(dt);
+
+  if (player.hp <= 0) {
+    player.stateMachine.setState('death');
+    return;
+  }
+
+  // One-shot triggers: attackTime / dodgeTime jump from 0 to 1 on action.
+  // Track edge transitions so we only play the clip once per action.
+  if (player.attackTime > 0.95 && player._lastAttackTime <= 0.95) {
+    player.stateMachine.playOnce('attack', player.stateMachine.current() || 'idle');
+  }
+  player._lastAttackTime = player.attackTime;
+
+  if (player.dodgeTime > 0.95 && player._lastDodgeTime <= 0.95) {
+    player.stateMachine.playOnce('dodge', 'idle');
+  }
+  player._lastDodgeTime = player.dodgeTime;
+
+  // Locomotion only takes over if no one-shot is currently playing.
+  const current = player.stateMachine.current();
+  const oneShotPlaying = current === 'attack' || current === 'dodge' || current === 'hit';
+  if (oneShotPlaying) return;
+
+  if (ctx.isAiming) {
+    player.stateMachine.setState('aim');
+    return;
+  }
+
+  const speed = Math.hypot(player.velocity.x, player.velocity.z);
+  if (speed > player.walkSpeed * 0.85) {
+    player.stateMachine.setState('run');
+  } else if (speed > 0.5) {
+    player.stateMachine.setState('walk');
+  } else {
+    player.stateMachine.setState('idle');
+  }
 }
 
 export function doDodge(player) {

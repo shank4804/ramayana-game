@@ -1,6 +1,6 @@
 # Ramayana Game Architecture
 
-Last updated: 2026-05-23 (Step 3 landed)
+Last updated: 2026-06-06 (Step 4a landed)
 
 ## Overview
 
@@ -46,6 +46,7 @@ src/
     camera.js                        third-person follow update
     assets.js                        AssetLibrary: LoadingManager + GLTFLoader + cache
     loading.js                       LoadingScreen DOM controller
+    animation.js                     AnimationStateMachine + clip-name alias layer
   world/
     world.js                         district orchestrator (sky/ground/districts)
     decor.js                         shared primitive builders (tree, rock, lamp, wall, etc.)
@@ -131,9 +132,28 @@ Important implication:
 
 - movement feels like a 3D action prototype, but physics is still custom and lightweight rather than rigid-body simulation
 
+## Animation State Machine
+
+`src/engine/animation.js` exports `AnimationStateMachine`, `buildClipMap`, `resolveClip`, and `DEFAULT_CLIP_ALIASES`.
+
+The state machine wraps a Three.js `AnimationMixer` and maps eight canonical states — `idle`, `walk`, `run`, `attack`, `dodge`, `hit`, `death`, `aim` — to actions built from a GLB's `AnimationClip[]`. Looping states (`idle` / `walk` / `run` / `aim`) play continuously; one-shot states (`attack` / `dodge` / `hit`) `LoopOnce` + `clampWhenFinished` + auto-return to the previous state via the mixer's `'finished'` event.
+
+The clip-name alias layer absorbs pack-specific naming. `DEFAULT_CLIP_ALIASES` covers Quaternius (`CharacterArmature|Walk`), Mixamo (`Armature|Walk_Cycle`), and bare-name (`walk`) conventions. Per-asset overrides can be passed to `buildClipMap`.
+
+The same state machine is reused by player (Step 4) and enemy (Step 5) — only the transition rules differ.
+
 ## Player Controller
 
 The player lives in `src/entities/player.js` (`createPlayer`, `updatePlayer`, `updatePlayerAnimation`, `doDodge`, `damagePlayer`).
+
+`createPlayer(spawn, gltf?)` has two branches:
+
+- **Primitive (default):** builds the existing box/sphere mesh hierarchy. `player.parts.{torso,head,leftArm,...}` is populated; `player.stateMachine` is `null`.
+- **Skinned (when `gltf` supplied):** clones the GLB via `SkeletonUtils.clone`, builds an `AnimationMixer`, builds a clip map via `buildClipMap(gltf.animations)`, instantiates an `AnimationStateMachine`. `player.parts` is `null`; `player.stateMachine` is populated.
+
+`updatePlayerAnimation` checks `player.stateMachine` and routes accordingly: state-machine path derives the desired state from velocity, aim flag, attackTime / dodgeTime edge triggers, and HP; primitive path runs the existing procedural arm/leg sin-wave animation.
+
+`Ramayana3DGame._bootAssets()` HEAD-checks `./assets/characters/rama.glb`; if present, queues the load; on completion `_swapInLoadedAssets()` removes the primitive player from the scene and instantiates the skinned one in place. A missing GLB is silent — no error overlay.
 
 Current player systems:
 
@@ -326,4 +346,4 @@ The new 3D runtime is materially closer to a GTA-like prototype than the earlier
 - no NPC dialogue actors in the world
 - runtime still depends on WebGL support in the browser
 
-The next meaningful technical step is AAA Phase 1 Step 4: the Rama character pipeline (GLTF + animation state machine). See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`. Steps 4 and 6 are the first to exercise the asset pipeline plumbing landed in Step 2; both depend on CC0 GLB assets being sourced first.
+The next meaningful technical step is AAA Phase 1 Step 5: the enemy character pipeline. The same animation state machine and GLB-aware-with-primitive-fallback pattern that landed for the player in Step 4a applies directly to the rakshasa in `src/entities/enemy.js`. See `docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`. Step 4b (drop `rama.glb` in, validate) and Step 6 (Ayodhya district GLBs) both still depend on CC0 assets being sourced first.
