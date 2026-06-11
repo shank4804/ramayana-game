@@ -4,120 +4,84 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>Ramayana: Third-Person Prototype</title>
-  <link rel="stylesheet" href="style.css?v=20260412b" />
+  <title>Ramayana</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="loading-screen">
-    <div class="loading-card">
-      <div class="loading-eyebrow">Ramayana 3D</div>
-      <h1 class="loading-title">Loading</h1>
-      <div class="loading-bar"><div class="loading-bar-fill"></div></div>
-      <div class="loading-label">0%</div>
-      <div class="loading-flavor">Stringing Rama's bow…</div>
-      <div class="loading-error hidden"></div>
-      <button class="loading-retry hidden">Retry</button>
-    </div>
-  </div>
+  <div id="app">
+    <!-- WebGL canvas is prepended here by the game -->
 
-  <div id="app-root">
-    <div id="hud">
-      <div id="brand-card" class="card">
-        <div class="eyebrow">Ramayana 3D</div>
-        <h1 id="chapter-title">Ayodhya</h1>
-        <p id="objective-text">Drive through the eastern gate.</p>
+    <!-- Title screen -->
+    <div id="title-screen" class="screen">
+      <div class="title-card">
+        <div class="eyebrow">An Epic of Exile and Return</div>
+        <h1>RAMAYANA</h1>
+        <div class="menu">
+          <button id="btn-new" class="menu-item">New Journey</button>
+          <button id="btn-continue" class="menu-item">Continue</button>
+          <button id="btn-help" class="menu-item secondary">How To Play</button>
+        </div>
+        <p class="title-hint">Arrow keys / W S navigate &middot; Enter selects</p>
       </div>
-
-      <div id="status-card" class="card compact">
-        <div class="label-row">
-          <span>Health</span>
-          <span id="health-value">100 / 100</span>
-        </div>
-        <div class="meter">
-          <div id="health-fill" class="meter-fill"></div>
-        </div>
-        <div class="status-row">
-          <span>Enemies</span>
-          <strong id="enemy-value">0</strong>
-        </div>
-        <div class="status-row">
-          <span>Mode</span>
-          <strong id="mode-value">On Foot</strong>
-        </div>
-        <div class="status-row">
-          <span>Weapon</span>
-          <strong id="weapon-value">Blade</strong>
-        </div>
-        <div class="status-row">
-          <span>Speed</span>
-          <strong id="speed-value">0</strong>
-        </div>
-      </div>
-
-      <div id="radar-card" class="card compact">
-        <div class="eyebrow">Radar</div>
-        <canvas id="radar" width="220" height="220"></canvas>
-      </div>
-
-      <div id="controls-card" class="card compact">
-        <div class="eyebrow">Controls</div>
-        <p>Click the world to lock the camera. `WASD` or arrow keys move, `Shift` sprint, `F` enter or exit the chariot.</p>
-        <p>`LMB` sword. Hold `RMB` to aim. `LMB` or `K` while aiming shoots the bow. `Space` dodges.</p>
-        <p>`Q/E` orbit fallback, wheel zoom, `Enter` advances story panels.</p>
+      <div id="help-panel" class="help-panel hidden">
+        <h2>How To Play</h2>
+        <p><b>WASD / Arrows</b> move &middot; <b>Shift</b> sprint &middot; <b>Space</b> dodge</p>
+        <p><b>Mouse</b> look (click world to lock) &middot; <b>Wheel</b> zoom</p>
+        <p><b>Left click</b> sword &middot; <b>Hold right click</b> aim bow, <b>left click</b> to shoot</p>
+        <p><b>Enter</b> advances cutscenes &middot; <b>Esc</b> skips them</p>
+        <button id="btn-help-close" class="menu-item secondary">Back</button>
       </div>
     </div>
 
-    <div id="prompt" class="prompt hidden">Press F to enter the royal chariot</div>
+    <!-- Cinematic letterbox + subtitles -->
+    <div id="letterbox-top" class="letterbox"></div>
+    <div id="letterbox-bottom" class="letterbox"></div>
+    <div id="subtitle" class="subtitle hidden">
+      <span id="subtitle-speaker"></span>
+      <span id="subtitle-text"></span>
+    </div>
+    <div id="cutscene-hint" class="cutscene-hint hidden">Enter &middot; next &nbsp;&nbsp; Esc &middot; skip</div>
 
-    <div id="overlay" class="overlay hidden">
-      <div class="overlay-panel">
-        <div class="eyebrow" id="overlay-eyebrow">Ramayana</div>
-        <h2 id="overlay-title">The Exile Begins</h2>
-        <div id="overlay-speaker" class="overlay-speaker hidden">Narrator</div>
-        <p id="overlay-body">A new third-person journey begins.</p>
-        <p id="overlay-hint" class="overlay-hint hidden">Press Enter to continue</p>
+    <!-- Gameplay HUD -->
+    <div id="hud" class="hidden">
+      <div id="chapter-card">
+        <div class="eyebrow" id="hud-chapter">Chapter</div>
+        <div id="hud-objective">Objective</div>
+      </div>
+      <div id="vitals">
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <div id="hud-enemies"></div>
+      </div>
+      <div id="toast" class="hidden"></div>
+      <div id="crosshair" class="hidden"></div>
+    </div>
 
-        <div id="menu-buttons" class="menu-buttons hidden">
-          <button id="menu-new-game" class="menu-button">New Game</button>
-          <button id="menu-load-game" class="menu-button">Load Game</button>
-          <button id="menu-settings" class="menu-button secondary">Settings</button>
-          <button id="menu-exit" class="menu-button secondary">Exit</button>
-        </div>
+    <!-- Chapter title splash -->
+    <div id="chapter-splash" class="hidden">
+      <div class="splash-eyebrow" id="splash-eyebrow"></div>
+      <div class="splash-title" id="splash-title"></div>
+    </div>
 
-        <div id="settings-panel" class="settings-panel hidden">
-          <label class="setting-row">
-            <span>Look Sensitivity</span>
-            <input id="setting-sensitivity" type="range" min="0.6" max="1.8" step="0.05" value="1" />
-          </label>
-          <label class="setting-row">
-            <span>Graphics</span>
-            <select id="setting-quality">
-              <option value="medium">Medium</option>
-              <option value="high" selected>High</option>
-              <option value="epic">Epic</option>
-            </select>
-          </label>
-          <label class="setting-row checkbox-row">
-            <span>Invert Look Y</span>
-            <input id="setting-invert-y" type="checkbox" />
-          </label>
-        </div>
-
-        <div id="overlay-actions" class="actions">
-          <button id="primary-action">Continue</button>
-          <button id="secondary-action" class="secondary hidden">Secondary</button>
+    <!-- End states -->
+    <div id="end-screen" class="screen hidden">
+      <div class="title-card">
+        <div class="eyebrow" id="end-eyebrow"></div>
+        <h1 id="end-title"></h1>
+        <p id="end-body"></p>
+        <div class="menu">
+          <button id="btn-end-primary" class="menu-item">Continue</button>
         </div>
       </div>
     </div>
 
-    <div id="crosshair" class="hidden">
-      <span></span>
-      <span></span>
+    <!-- Boot error -->
+    <div id="boot-error" class="screen hidden">
+      <div class="title-card">
+        <div class="eyebrow">Cannot Start</div>
+        <h1 style="font-size:26px">WebGL unavailable</h1>
+        <p id="boot-error-text"></p>
+      </div>
     </div>
-
-    <div id="toast" class="toast hidden">Mission Updated</div>
   </div>
 
   <script type="importmap">
@@ -128,6 +92,6 @@
       }
     }
   </script>
-  <script type="module" src="src/bootstrap.js?v=20260412c"></script>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
