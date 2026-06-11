@@ -1,319 +1,92 @@
-# Ramayana Game Implementation Progress
+# Ramayana — Three.js Rewrite: Status & Next Steps
 
-Last updated: 2026-06-06 (Steps 4a + 5a landed; 4b/5b await GLBs)
+Last updated: 2026-06-06
+Branch: `claude/threejs-rewrite`
 
-This is the handoff file for the next AI agent. Read this first and update it after every meaningful implementation step.
+This is the handoff doc for the **ground-up Three.js rewrite**. It supersedes the
+previous AAA-track progress log (the old track lives on `master`; its docs remain
+under `docs/superpowers/` for reference but are **paused** — do not work from them
+on this branch).
 
-## Handoff Snapshot (2026-05-23)
+## What This Build Is
 
-The current track is **AAA Phase 1 — Visuals Foundation Vertical Slice**, defined in [`docs/superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md`](superpowers/specs/2026-04-19-aaa-phase-1-visuals-foundation-design.md).
-
-The spec breaks Phase 1 into 8 implementation steps. Each step is independently shippable and each will need its own plan written before execution.
-
-**Step status:**
-
-| # | Step | Status | Plan |
-|---|---|---|---|
-| 1 | Refactor scaffold (split `src/app3d.js` into modules) | **Done (pending browser smoke test)** — `app3d.js` shrunk from 2293 → ~880 lines, all 22 extraction commits landed; merged to `master` in PR #1 | [`docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md`](superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md) |
-| 2 | Asset pipeline (`LoadingManager`, `GLTFLoader`, loading screen) | **Done (pending browser smoke test)** — `AssetLibrary` + `LoadingScreen` wired into boot flow; save key bumped to v4 | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-2-asset-pipeline.md) |
-| 3 | Rendering upgrades (`EffectComposer`, bloom, SSAO, FXAA, ACES retune) | **Done (pending browser smoke test)** — composer pipeline live, quality tiers gate SSAO/bloom/shadow/fog/pixel-ratio | [`docs/superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md`](superpowers/plans/2026-05-23-aaa-phase-1-step-3-rendering-upgrades.md) |
-| 4a | Character pipeline — infrastructure (animation state machine + GLB-aware player loader with primitive fallback) | **Done (pending browser smoke test)** | [`docs/superpowers/plans/2026-06-06-aaa-phase-1-step-4-rama-pipeline.md`](superpowers/plans/2026-06-06-aaa-phase-1-step-4-rama-pipeline.md) |
-| 4b | Character pipeline — drop actual `rama.glb` into `assets/characters/`, map clip names, validate transitions | **Blocked on user** — needs CC0 GLB sourced (see asset sourcing section below) | — |
-| 5a | Enemy pipeline — infrastructure (state machine + GLB-aware loader for rakshasa with primitive fallback) | **Done (pending browser smoke test)** | — (same plan + pattern as 4a) |
-| 5b | Enemy pipeline — drop actual `rakshasa.glb` into `assets/characters/`, validate | **Blocked on user** | — |
-| 6 | Ayodhya rebuild with GLTF assets | Not started | None yet |
-| 7 | Polish pass (palette, attribution) | Not started | None yet |
-| 8 | Final verification across quality tiers | Not started | None yet |
-
-**Next AI's job:**
-
-1. **Validate Steps 1 + 2 + 3 + 4a in a real browser.** Steps 1–3 are unchanged from prior sessions; Step 4a adds a swap path that only activates if `assets/characters/rama.glb` exists. Without the GLB the game must look and play exactly like Step 3.
-2. **Source the CC0 GLBs** per the asset sourcing section below. Once `rama.glb` is in place, reload — the loading screen will briefly show the file being fetched, then the skinned Rama replaces the primitive one. If clip names don't match the defaults, edit `DEFAULT_CLIP_ALIASES` in `src/engine/animation.js`.
-3. **Repeat the pattern for Step 5 (rakshasa enemy):** the animation state machine is reusable; `src/entities/enemy.js` needs an equivalent `gltf` optional path. Most of the work is mirroring what landed in `entities/player.js`.
-4. **Step 6 (Ayodhya GLBs):** drop world GLBs into `assets/world/ayodhya/` and rewire `src/world/ayodhya.js` to use them instead of `decor.addBuilding` etc.
-
-**Progress on Step 5a (enemy pipeline infrastructure):**
-
-- [x] `src/entities/enemy.js` — `createEnemy(type, position, gltf?)` factory branches to skinned implementation when `gltf` provided. `updateEnemies` derives walk/run/attack/hit/death from existing distance/cooldown/flash state. `spawnMissionEnemies` accepts a `gltfByType` map.
-- [x] `src/app3d.js` — HEAD-checks `./assets/characters/rakshasa.glb`; `_spawnMissionEnemies` passes the cached GLB through to `spawnMissionEnemies`.
-- [x] `node --check` clean. **Browser smoke test pending** (and skinned-path validation needs the GLB).
-
-Only `rakshasa` is wired today since the Phase 1 spec authors only one enemy archetype. `guard` / `brute` / `boss` types remain primitive. If you want them skinned later, the easiest path is to either drop separate GLBs (`guard.glb`, etc.) and extend the cache lookup in `_spawnMissionEnemies`, or reuse the rakshasa GLB with a per-type color override.
-
-**Progress on Step 4a (Rama pipeline infrastructure):** all 5 tasks complete.
-
-- [x] Task 1: `src/engine/animation.js` — `AnimationStateMachine` + `buildClipMap` + `DEFAULT_CLIP_ALIASES` covering common Quaternius / Mixamo / Armature naming conventions. One-shot states (`attack` / `dodge` / `hit`) clamp and auto-return on clip finish via the mixer's `'finished'` event.
-- [x] Task 2: `src/entities/player.js` — `createPlayer(spawn, gltf?)` factory branches to a skinned implementation when `gltf` is supplied; `updatePlayerAnimation` checks for `player.stateMachine` and routes through it, otherwise runs the existing primitive procedural animation unchanged.
-- [x] Task 3: `src/app3d.js` — `_bootAssets` HEAD-checks `./assets/characters/rama.glb`; queues `loadGLTF('rama', ...)` if present, silently skips if missing. On load, `_swapInLoadedAssets()` removes the primitive player and instantiates the skinned one in place at the same world position.
-- [x] Task 4: `node --check` clean. **Browser smoke test pending** (and the "GLB path actually animates" branch can't be tested at all until a GLB is supplied).
-- [x] Task 5: this doc + architecture doc.
-
-**Step 4b — what's blocked on the user:**
-
-Drop a Rama GLB into `assets/characters/rama.glb` (see the asset sourcing section below for download links and verification steps). On next boot the game will auto-detect it and swap in. If the pack's clip names don't match any of the `DEFAULT_CLIP_ALIASES` in `src/engine/animation.js`, add them — the file is structured so each canonical state has its own candidates array and adding a new pack's name is a one-line edit per state.
-
-**Progress on Step 3 (rendering upgrades):** all 6 tasks complete.
-
-- [x] Task 1: `src/engine/renderer.js` exports new `createPostProcessing(renderer, scene, camera)` returning `{ composer, setQuality, setSize }`.
-- [x] Task 2: `app3d.js` instantiates `this.postFx`, swaps `renderer.render()` for `composer.render()`, calls `setSize` on resize.
-- [x] Task 3: `_applySettings` now also adjusts fog far per tier and calls `postFx.setQuality(level)`.
-- [x] Task 4: tonemapping exposure dropped 1.05 → 1.0 at high tier to compensate for bloom + SSAO; medium/epic kept as-is.
-- [x] Task 5: `node --check` clean. **Browser smoke test pending.**
-- [x] Task 6: this doc + architecture doc.
-
-**Progress on Step 2 (asset pipeline):** all 7 tasks complete.
-
-- [x] Task 1: `src/engine/assets.js` — `AssetLibrary` wrapping `LoadingManager` + `GLTFLoader`, with `loadGLTF`, `get`, `clone`, `getAnimations`, `startAll`.
-- [x] Task 2: `src/engine/loading.js` — `LoadingScreen` controller (show/setProgress/hide/showError) with min-display-time gate and flavor-line rotation.
-- [x] Task 3: `<div id="loading-screen">` in `index.html` + matching styles in `style.css`. Importmap added so bare `'three'` / `'three/addons/'` specifiers resolve in the browser (required by GLTFLoader's internal imports).
-- [x] Task 4: save key bumped `v3` → `v4` in `src/engine/save.js`; v3 saves silently discarded on module load.
-- [x] Task 5: `app3d.js` boot flow now goes `loading screen show → assets.startAll → onLoad → loading screen hide + title menu`. Zero assets queued today; Steps 4/6 will add real `loadGLTF` calls.
-- [x] Task 6: `node --check` clean across all changed files. **Browser smoke test still pending** (remote container has no WebGL).
-- [x] Task 7: this doc + architecture doc.
-
-**Progress on Step 1 (refactor scaffold):** all 23 tasks complete.
-
-- [x] Task 1: extract `engine/save.js`
-- [x] Task 2: extract settings persistence into `engine/save.js`
-- [x] Task 3: extract `engine/input.js`
-- [x] Task 4: extract `engine/collision.js`
-- [x] Task 5: extract `engine/renderer.js`
-- [x] Task 6: extract `engine/lighting.js`
-- [x] Task 7: extract `engine/camera.js`
-- [x] Task 8: extract `world/decor.js` (shared primitive builders)
-- [x] Task 9: extract `world/ayodhya.js`
-- [x] Task 10: extract forest/kishkindha/lanka districts (no Ravana district existed in current code; Ravana boss area is part of `lanka.js`)
-- [x] Task 11: extract `world/backdrop.js`, `world/roads.js`
-- [x] Task 12: extract `world/world.js` orchestrator
-- [x] Task 13: extract `entities/enemy.js`
-- [x] Task 14: extract `entities/chariot.js`
-- [x] Task 15: extract `entities/player.js`
-- [x] Task 16: extract `combat/sword.js`
-- [x] Task 17: extract `combat/bow.js`
-- [x] Task 18: extract `ui/hud.js`
-- [x] Task 19: extract `ui/overlay.js`
-- [x] Task 20: extract `ui/menu.js`
-- [x] Task 21: extract `missions/missions.js`
-- [x] Task 22: final cleanup of `app3d.js` (~880 lines, above the 500-line aspirational target but the residual is orchestrator wiring — event binding and mission flow coordination — that doesn't extract cleanly without dragging state into modules)
-- [x] Task 23: update architecture + handoff docs
-
-**Residual contents of `src/app3d.js`** (per Task 22 documentation requirement):
-
-- Constructor (DOM lookups, state init, module wiring, world build, event binding)
-- `_bindEvents` — keyboard / mouse / pointer-lock / wheel / resize listeners (~110 lines, tightly coupled to UI mode state)
-- Mission flow (`_startNewGame`, `_continueGame`, `_resetActorsForMission`, `_restoreActorState`, `_updateMission`, `_completeMission`, `_spawnMissionEnemies` shim) — these coordinate player, vehicle, enemies, HUD, overlay, save in one place
-- Save snapshot assembly (`_saveGame` reads from player/vehicle/enemies and writes via `engine/save.js`)
-- Thin shims for module functions still called from many places (`_updateHUD`, `_updateRadar`, `_toast`, `_setMarker`, etc.)
-
-These can be extracted further in a future cleanup pass, but the visual-foundation roadmap doesn't require it.
-
-**Important verification note:** the headless container used for these refactor commits cannot create a WebGL context (per the original session), so browser smoke tests were not run as part of these commits. Each task used `node --check` syntax validation plus careful verbatim code moves. Run the smoke checklist in a real browser before declaring Step 1 fully done.
-
-**The legacy 2D plan in [`docs/P0-design.md`](P0-design.md) is no longer the active track.** That document describes the older canvas runtime; the active runtime is the 3D Three.js build in `src/app3d.js`. Do not work from `P0-design.md` for new features.
-
-**Uncommitted modified files (carry-over from prior sessions):**
-- `README.md`, `index.html`, `package.json`, `style.css`
-- `src/constants.js`, `src/game.js`, `src/hud.js`, `src/level.js`
-
-**Uncommitted new files:**
-- `src/bootstrap.js`, `src/app3d.js` (active runtime — treat as primary)
-- `src/chapters.js`, `src/cutscene.js`, `src/renderer3d.js`, `src/room.js` (legacy 2D chapter runtime, inactive — will be deleted after Phase 1 ships)
-- `dev_server.py` (no-cache local server)
-- `package-lock.json`
-- `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_PROGRESS.md`, `docs/P0-design.md`
-- `RAMAYANA_GAME_ROADMAP.md`
-- `docs/superpowers/plans/2026-04-19-aaa-phase-1-step-1-refactor-scaffold.md` (this session's output)
-
-**Last committed state:** `5ec2e79 Add Phase 1 AAA design spec: visuals foundation vertical slice`.
-
-## Current State
-
-The active browser build is the Three.js third-person runtime, not the older canvas chapter runtime.
-
-Active entry path:
-
-- [index.html](/Users/shashank/workspace/ramayana-game/index.html)
-- [style.css](/Users/shashank/workspace/ramayana-game/style.css)
-- [src/bootstrap.js](/Users/shashank/workspace/ramayana-game/src/bootstrap.js)
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-
-Recommended local server:
-
-- [dev_server.py](/Users/shashank/workspace/ramayana-game/dev_server.py)
-
-The older 2D/canvas files are still present, but they are legacy and inactive unless someone rewires the entry point manually.
-
-## Completed In This Phase
-
-### 1. Title Menu And Startup Flow
-
-Implemented in:
-
-- [index.html](/Users/shashank/workspace/ramayana-game/index.html)
-- [style.css](/Users/shashank/workspace/ramayana-game/style.css)
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-
-What works:
-
-- title screen menu with `New Game`, `Load Game`, `Settings`, and `Exit`
-- keyboard menu navigation with `ArrowUp`, `ArrowDown`, `W`, `S`, and `Enter`
-- intro dialogue sequence before gameplay begins
-- chapter intro dialogue still plays after the prologue
-
-### 2. Input Fixes
-
-Implemented in:
-
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-
-What changed:
-
-- on-foot movement now supports arrow keys as well as `WASD`
-- chariot driving now supports arrow keys as well as `WASD`
-- right shift also works for sprint
-- mouse look now uses persisted sensitivity and invert-Y settings
-
-### 3. Settings Layer
-
-Implemented in:
-
-- [index.html](/Users/shashank/workspace/ramayana-game/index.html)
-- [style.css](/Users/shashank/workspace/ramayana-game/style.css)
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-
-What works:
-
-- look sensitivity slider
-- graphics quality selector
-- invert-look-Y toggle
-- settings persistence via `localStorage`
-
-Settings key:
-
-- `ramayana-3d-settings-v1`
-
-### 4. Local Boot Reliability Fix
-
-Implemented in:
-
-- [src/bootstrap.js](/Users/shashank/workspace/ramayana-game/src/bootstrap.js)
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-- [dev_server.py](/Users/shashank/workspace/ramayana-game/dev_server.py)
-- [package.json](/Users/shashank/workspace/ramayana-game/package.json)
-
-What changed:
-
-- installed local `three` dependency instead of importing from `unpkg`
-- added a bootstrap loader so runtime boot failures surface on screen
-- fixed the boot path so the game still starts even when the module loads after `DOMContentLoaded`
-- made renderer creation retry with a simpler WebGL configuration before failing
-- added a no-cache local dev server so the browser stops serving stale JS/CSS
-- made `npm start` and `npm run dev` use the no-cache server
-
-Current save key:
-
-- `ramayana-3d-openworld-v3`
-
-## Verification Done
-
-Syntax check passed:
-
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-
-Live verification done in a headless browser:
-
-- the new server serves [index.html](/Users/shashank/workspace/ramayana-game/index.html), [src/bootstrap.js](/Users/shashank/workspace/ramayana-game/src/bootstrap.js), [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js), and local Three.js from `node_modules`
-- boot failures now surface visibly in the overlay instead of silently failing
-
-Observed in headless:
-
-- the environment available to headless Chrome could not create a WebGL context
-- the on-screen boot error correctly reported `Error creating WebGL context`
-
-Important interpretation:
-
-- the boot path is now diagnosable
-- whether the actual 3D game runs still depends on the user’s browser having working WebGL
-
-## Manual QA Still Needed In A Normal Browser
-
-- confirm the title menu appears in the user’s real browser
-- confirm `New Game` starts the prologue, then the first playable chapter
-- confirm `Load Game` works from the title menu
-- confirm arrow-key movement works on foot and in the chariot
-- confirm settings changes affect camera feel and render quality
-- confirm pointer lock still behaves correctly after overlays
-- confirm the user’s browser can create a WebGL context
-
-## Known Constraints
-
-- The active 3D game is still built from primitive geometry, not real character/environment assets.
-- There is no skeletal animation system yet.
-- Collision is custom AABB logic, not a physics engine.
-- Enemy movement has no navmesh.
-- The runtime is now split across focused modules under `src/engine/`, `src/world/`, `src/entities/`, `src/combat/`, `src/ui/`, `src/missions/`. `src/app3d.js` is now ~880 lines of orchestrator wiring instead of the original 2293-line monolith.
-- The 3D runtime still requires working WebGL support in the browser.
-
-## Best Next Step
-
-1. **Run the smoke checklist for Steps 1 + 2 + 3 + 4a + 5a in a real browser.** Without GLBs present, the game must look and play identically to the pre-4a behavior — both player and enemy primitive paths are preserved unchanged.
-2. **Source CC0 GLBs** — see the section below. Drop `rama.glb` and `rakshasa.glb` into `assets/characters/` to complete Steps 4b + 5b.
-3. **Step 6 (Ayodhya GLBs)** is the remaining content step — it needs a separate plan because environment assets place at specific coordinates with bounding-box collision, which is structurally different from the swap-the-mesh pattern used for characters.
-
-## Sourcing GLB Assets (For The User)
-
-You do not need to author 3D models yourself. The Phase 1 spec is built around using existing free CC0 assets. Making rigged animated characters in Blender is 2–3 months of full-time learning; the open-source community has already done it.
-
-### Recommended downloads
-
-1. **[Quaternius — Ultimate Animated Character Pack](https://quaternius.com/packs/ultimateanimatedcharacter.html)** (CC0) — humanoid base with idle/walk/run/attack/jump/death animations baked in. Recolor the materials in code to make Rama; same base retextured darker (with horns/claws) becomes the rakshasa. Covers Step 4 + Step 5.
-2. **[Quaternius — Ultimate Fantasy Town](https://quaternius.com/packs/ultimatefantasytown.html)** or **[Ultimate Medieval](https://quaternius.com/packs/ultimatemedieval.html)** (CC0) — buildings, walls, gates, trees, fountains for Ayodhya in Step 6. Pick warm-stone-and-gold pieces for the saffron palace look.
-
-Drop them into the folder structure the spec already defines:
+A single continuous 3D world telling the Ramayana in six playable chapters, with
+cinematic cutscenes between them. No bundler, no build step: ES modules + an
+importmap, Three.js from `node_modules`, served by `dev_server.py`.
 
 ```
-assets/
-  characters/rama.glb
-  characters/rakshasa.glb
-  world/ayodhya/palace.glb
-  world/ayodhya/house.glb
-  ... etc
+index.html / style.css      title screen, letterbox, subtitles, HUD, splash, end screens
+src/main.js                 boot + boot-error surface
+src/core/renderer.js        WebGL renderer (ACES, shadows, fallback attempts)
+src/core/input.js           keyboard + pointer-lock mouse + drag fallback + wheel
+src/core/collision.js       AABB slide-along-walls collision
+src/core/save.js            localStorage (key: ramayana-rewrite-v1, saves chapter index)
+src/game/game.js            orchestrator: title → cutscene → play → end states
+src/game/world.js           Ayodhya / forest / Kishkindha / Lanka in one map
+src/game/cutscene.js        cinematic player: camera tracks, letterbox, timed subtitles
+src/game/story.js           6 chapters + ending (cutscene shots, missions, dialogue)
+src/game/player.js          third-person Rama + follow camera
+src/game/enemy.js           rakshasa / guard / brute / ravana archetypes
+src/game/combat.js          sword cone, bow + arrows, ravana orbs
+src/game/hud.js             chapter card, health bar, toasts, chapter splash
 ```
 
-### Other CC0 sources
+## Done So Far
 
-- **[Poly Pizza](https://poly.pizza)** — aggregator across many creators; filter to CC0
-- **[Kenney.nl](https://kenney.nl)** — clean low-poly packs, all CC0
-- **[Sketchfab](https://sketchfab.com)** — huge library; filter to "Downloadable" + "CC0"
+- [x] World: one continuous map — Ayodhya sandstone city (west, with eastern gate),
+      Dandaka forest + exile camp (center), Kishkindha rock fields (east),
+      Lanka fortress + Ravana's palace (far east), backdrop hills + sea
+- [x] Cinematic cutscene system: authored camera shots flown through the live world,
+      letterbox bars, timed speaker/subtitle lines, Enter = next line / Esc = skip
+- [x] Story: 6 chapters, each with intro cutscene + mission + completion line
+      (Exile Road → Forest of Demons → The Abduction → Kishkindha → Gates of Lanka
+      → The Last Court), plus a 2-shot Diwali ending sequence
+- [x] Third-person player: WASD/arrows, sprint, dodge (with i-frames), pointer-lock
+      mouse look with drag fallback, wheel zoom, over-shoulder zoom while aiming
+- [x] Combat: sword cone attack (LMB), bow aim (hold RMB) + arrows (LMB while aiming),
+      enemy melee, Ravana ranged orbs
+- [x] Enemies: 4 archetypes with pursuit AI, hit-flash, horns on demons
+- [x] Mission loop: travel to marker → combat wave → chapter complete → next cutscene
+- [x] HUD: chapter/objective card, health bar, enemy counter, toasts, chapter splash
+      titles, crosshair in aim mode
+- [x] Title screen with keyboard navigation, How To Play panel, Continue (saved
+      chapter index), death/retry and victory/end screens
+- [x] All files pass `node --check`
 
-### What NOT to do
+## NOT Yet Verified
 
-- **Don't make rigged animated characters yourself** unless you already know Blender. Static props (trees, walls) are doable in a weekend, characters are the wall.
-- **Be skeptical of AI 3D generators** (Meshy, Luma Genie, Tripo) for characters — outputs are still rough/uncanny. Fine for one specific prop you can't find.
+**No browser smoke test has been run** — this was authored in a remote container
+without WebGL. First local run should check:
 
-### Verify the file before dropping it in
+1. Boot → title screen renders over a drifting view of Ayodhya
+2. New Journey → prologue cutscene plays (camera pans over the palace, letterbox
+   on, lines advance on Enter, Esc skips)
+3. Chapter splash appears, player can walk/sprint/dodge, camera follows
+4. Walking into the gate marker completes chapter 1 → chapter 2 cutscene plays
+5. Forest chapter: enemies spawn at the clearing, sword/bow kill them, chapter advances
+6. Death → retry screen; full run → ending cutscene → victory screen
+7. Reload mid-game → Continue resumes at the saved chapter
 
-A GLB is a single binary file (not a `.gltf` text file plus a `.bin` sidecar). To confirm a character has bones and animations, drag it into **[gltf.report](https://gltf.report)** — it shows the animation clip names. You'll need those names in Step 4 (the pack might call its walk cycle `Walk_Cycle`, `walking`, `Armature|Walk`, etc.) so the state machine can map them to our canonical `walk` / `run` / `attack` names.
+## Next Steps (in order)
 
-### When ready
+1. **Browser smoke test** the full chapter flow (list above); fix whatever breaks.
+2. **Pause menu** (Esc during play): resume / restart chapter / quit to title.
+3. **Audio**: ambient track per district, sword/bow/hit effects, cutscene sting.
+   (Web Audio, no assets in repo yet — source CC0.)
+4. **The chariot**: drivable royal chariot for the Exile Road chapter (port the
+   old vehicle controller concept: enter/exit with F, throttle/steer physics).
+5. **Cutscene polish**: fade-in/out between shots, slow dolly ease per shot type,
+   skippable per-line typewriter effect.
+6. **Sita/Lakshmana companion actors**: static NPCs at the camp + in cutscenes so
+   the abduction beat lands visually (a hut that empties).
+7. **Boss fight beats**: Ravana phases (orb volleys, summon adds at HP thresholds).
+8. **GLTF upgrade path**: swap primitive Rama/enemies for rigged CC0 GLBs
+   (the old AAA-track docs under `docs/superpowers/` cover asset sourcing).
+9. **Performance pass**: merge static world geometry, cap shadow casters.
 
-Tell the next AI which packs were downloaded and what's in `assets/`. The Step 4 plan needs the specific clip names, mesh hierarchy, and scale from the actual files; without those it's guessing.
+## How To Run
 
-## Files Touched In This Phase
-
-- [index.html](/Users/shashank/workspace/ramayana-game/index.html)
-- [style.css](/Users/shashank/workspace/ramayana-game/style.css)
-- [src/bootstrap.js](/Users/shashank/workspace/ramayana-game/src/bootstrap.js)
-- [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js)
-- [dev_server.py](/Users/shashank/workspace/ramayana-game/dev_server.py)
-- [package.json](/Users/shashank/workspace/ramayana-game/package.json)
-- [README.md](/Users/shashank/workspace/ramayana-game/README.md)
-- [docs/ARCHITECTURE.md](/Users/shashank/workspace/ramayana-game/docs/ARCHITECTURE.md)
-- [docs/IMPLEMENTATION_PROGRESS.md](/Users/shashank/workspace/ramayana-game/docs/IMPLEMENTATION_PROGRESS.md)
-
-## Reminder For The Next Agent
-
-- Treat [src/bootstrap.js](/Users/shashank/workspace/ramayana-game/src/bootstrap.js) plus [src/app3d.js](/Users/shashank/workspace/ramayana-game/src/app3d.js) as the active runtime.
-- Use [dev_server.py](/Users/shashank/workspace/ramayana-game/dev_server.py) when testing locally so cache does not hide frontend changes.
-- The old canvas files remain in the repo but are not loaded by [index.html](/Users/shashank/workspace/ramayana-game/index.html).
-- Update this file again before stopping after the next feature phase.
+```bash
+npm install        # one-time: pulls three into node_modules
+npm start          # python3 dev_server.py → http://localhost:8000
+```
