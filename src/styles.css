@@ -67,7 +67,8 @@ canvas {
 
 .hud-health,
 .hud-objective,
-.hud-prompt {
+.hud-prompt,
+.hud-notification {
   width: fit-content;
   max-width: 100%;
   padding: 8px 10px;
@@ -89,6 +90,13 @@ canvas {
 
 .hud-prompt {
   color: #e8bf82;
+}
+
+.hud-notification {
+  color: #f7efe2;
+  border-color: rgb(216 173 69 / 44%);
+  background: rgb(70 43 23 / 78%);
+  font-weight: 700;
 }
 
 .screen-layer {

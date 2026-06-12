@@ -7,3 +7,4 @@
 ## Notes
 
 - No third-party binary character asset was downloaded in this restricted environment. The stand-in keeps the runtime recolor and accessory-socket contract ready for a future Quaternius CC0 GLB replacement.
+- The first audio pass is procedural Web Audio generated in `src/audio/ayodhyaAudio.ts`; no external audio files are used yet.

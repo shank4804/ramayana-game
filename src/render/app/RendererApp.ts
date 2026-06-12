@@ -1,10 +1,12 @@
 import * as THREE from "three";
 
+import { createAyodhyaAudioPass, type AyodhyaAudioPass } from "../../audio/ayodhyaAudio";
 import type { DebugFlags } from "../../diagnostics/debugFlags";
 import { createThirdPersonCameraRig, type ThirdPersonCameraRig } from "../../gameplay/camera/thirdPersonCamera";
 import { createRamaController, type RamaController } from "../../gameplay/controller/ramaController";
-import { createInputMapper, type InputMapper } from "../../gameplay/input/inputMapper";
+import { createInputMapper, type InputMapper, type PlayerInputSnapshot } from "../../gameplay/input/inputMapper";
 import { createCollisionWorld } from "../../physics/world";
+import { createAyodhyaSliceDirector, type AyodhyaSliceDirector } from "../../simulation/ayodhyaSlice";
 import { createGameplayHud, type GameplayHud } from "../../ui/gameplayHud";
 import { clampPixelSize, createPostPipeline, getDefaultPixelSize, type PixelatedEffectComposer } from "../post/postPipeline";
 import { createCamera } from "./createCamera";
@@ -18,6 +20,7 @@ interface RendererAppOptions {
 }
 
 export class RendererApp {
+  private readonly audio: AyodhyaAudioPass;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly cameraRig: ThirdPersonCameraRig;
   private readonly composer: PixelatedEffectComposer;
@@ -25,8 +28,10 @@ export class RendererApp {
   private readonly graphicsSettings: HTMLElement;
   private readonly hud: GameplayHud;
   private readonly inputMapper: InputMapper;
+  private readonly player: THREE.Object3D;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private readonly sliceDirector: AyodhyaSliceDirector;
   private readonly validationMesh: THREE.Object3D | null;
   private disposed = false;
   private lastFrameTime = 0;
@@ -37,6 +42,7 @@ export class RendererApp {
     const sceneSetup = createScene(debugFlags);
     this.scene = sceneSetup.scene;
     this.validationMesh = sceneSetup.validationMesh;
+    this.player = sceneSetup.player;
     this.cameraRig = createThirdPersonCameraRig(this.camera);
     this.inputMapper = createInputMapper(window);
     this.controller = createRamaController({
@@ -44,6 +50,8 @@ export class RendererApp {
       collisionWorld: createCollisionWorld(sceneSetup.collision),
       cameraRig: this.cameraRig,
     });
+    this.sliceDirector = createAyodhyaSliceDirector(sceneSetup.interactions);
+    this.audio = createAyodhyaAudioPass(window);
     this.hud = createGameplayHud();
     this.composer = createPostPipeline(this.renderer, this.scene, this.camera, {
       pixelSize: readSavedPixelSize(),
@@ -72,6 +80,7 @@ export class RendererApp {
     window.removeEventListener("resize", this.handleResize);
     this.renderer.domElement.removeEventListener("webglcontextlost", this.handleContextLost);
     this.inputMapper.dispose();
+    this.audio.dispose();
     this.renderer.setAnimationLoop(null);
     this.composer.dispose();
     this.renderer.dispose();
@@ -92,13 +101,21 @@ export class RendererApp {
     const deltaSeconds = this.lastFrameTime === 0 ? 1 / 60 : Math.min(0.05, (time - this.lastFrameTime) / 1000);
     this.lastFrameTime = time;
     const input = this.inputMapper.getInputSnapshot();
+    const sliceView = this.sliceDirector.update(deltaSeconds, input, this.player.position);
+    const gameplayInput = sliceView.allowPlayerControl ? input : createControlLockedInput(input);
 
-    this.controller.update(deltaSeconds, input);
+    this.controller.update(deltaSeconds, gameplayInput);
+    this.audio.update(deltaSeconds, {
+      cue: sliceView.audioCue,
+      moving: this.controller.state.speed > 0.15,
+      speed: this.controller.state.speed,
+    });
     this.hud.update({
       health: this.controller.state.health,
       mode: this.controller.state.mode,
-      objective: "Explore the Ayodhya courtyard",
-      prompt: input.interact ? "No interaction nearby" : "WASD move - drag orbit - right mouse aim",
+      notification: sliceView.notification,
+      objective: sliceView.objective,
+      prompt: sliceView.prompt,
       speed: this.controller.state.speed,
     });
 
@@ -107,6 +124,17 @@ export class RendererApp {
     }
 
     this.composer.render();
+  };
+}
+
+function createControlLockedInput(input: PlayerInputSnapshot): PlayerInputSnapshot {
+  return {
+    ...input,
+    moveX: 0,
+    moveZ: 0,
+    sprint: false,
+    dodge: false,
+    aim: false,
   };
 }
 

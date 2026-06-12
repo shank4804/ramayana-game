@@ -43,3 +43,16 @@
 - [x] Vite config dedupes `three` resolution to address duplicate Three.js imports.
 - [ ] Rapier collision backend is blocked until `@dimforge/rapier3d-compat` can be installed; npm registry lookup fails and the offline cache does not contain an installable package body.
 - [ ] Removing local Three.js type stubs is blocked until real declarations can be installed; `three@0.182.0` in this repo does not ship `.d.ts` files and `@types/three@0.182.0` is not installable from the current npm cache.
+
+## Milestone 5: Ayodhya Vertical Slice
+
+- [x] Explorable Ayodhya district layout is built from procedural architecture kit modules.
+- [x] Palace, streets, city gates, market props, foliage, and ambient NPCs are placed in the district.
+- [x] Collision proxies are emitted for buildings, gates, walls, trees, stairs, ramps, and market stalls.
+- [x] Walkable stairs and ramps are excluded from horizontal movement blockers.
+- [x] Dasharatha prologue cutscene state transitions into Rama gameplay.
+- [x] One main quest is implemented for Dasharatha's blessing.
+- [x] One side quest is implemented for lighting the market lamps.
+- [x] Story gates keep the player inside Ayodhya with visible city gate/guard framing.
+- [x] Minimal quest/interact prompts are surfaced through the HUD.
+- [x] First audio pass includes procedural ambience, footstep ticks, UI feedback, and a music bed after first user interaction.

@@ -8,9 +8,11 @@ import { createThirdPersonCameraRig } from "./gameplay/camera/thirdPersonCamera"
 import { createRamaController, type RamaControllerInput } from "./gameplay/controller/ramaController";
 import { createInputMapper } from "./gameplay/input/inputMapper";
 import { createAyodhyaCourtyard } from "./world/scenes/ayodhyaCourtyard";
+import { createAyodhyaDistrict } from "./world/scenes/ayodhyaDistrict";
 import { createCollisionWorld } from "./physics/world";
+import { createAyodhyaSliceDirector } from "./simulation/ayodhyaSlice";
 import { createGameplayHud } from "./ui/gameplayHud";
-import { createFloorModule, createPropModule, createWallModule } from "./world/kits/proceduralKit";
+import { createFloorModule, createPalaceFacadeModule, createPropModule, createRampModule, createStairsModule, createWallModule } from "./world/kits/proceduralKit";
 
 export function verifyMilestone2Contracts(
   renderer: THREE.WebGLRenderer,
@@ -88,4 +90,48 @@ export function verifyMilestone4Contracts(camera: THREE.PerspectiveCamera): THRE
   hud.element.remove();
 
   return character.object;
+}
+
+export function verifyMilestone5Contracts(): THREE.Object3D {
+  const district = createAyodhyaDistrict();
+  const director = createAyodhyaSliceDirector(district.interactions);
+  const palace = createPalaceFacadeModule({ width: 8, height: 3, depth: 2 });
+  const stairs = createStairsModule({ width: 3, height: 0.5, depth: 2 });
+  const ramp = createRampModule({ width: 2, height: 0.25, depth: 3 });
+  const marketStall = createPropModule({ kind: "marketStall" });
+  const idleInput = {
+    moveX: 0,
+    moveZ: 0,
+    cameraYawDelta: 0,
+    cameraPitchDelta: 0,
+    sprint: false,
+    dodge: false,
+    interact: false,
+    aim: false,
+  };
+
+  const prologueView = director.update(1 / 60, idleInput, district.player.position);
+  director.update(6, { ...idleInput, interact: true }, district.player.position);
+  const gameplayView = director.update(1 / 60, idleInput, district.player.position);
+  const hasMainQuest = district.interactions.some((interaction) => interaction.id === "dasharathaBlessing");
+  const hasSideQuest = district.interactions.some((interaction) => interaction.id === "marketLamps");
+  const hasStoryGate = district.interactions.some((interaction) => interaction.kind === "storyGate");
+
+  if (
+    !district.object.getObjectByName("kit-palace-facade") ||
+    !district.object.getObjectByName("dasharatha-stand-in") ||
+    !palace.collision.length ||
+    !stairs.collision.every((proxy) => proxy.blocksMovement === false) ||
+    !ramp.collision.every((proxy) => proxy.blocksMovement === false) ||
+    !marketStall.collision.length ||
+    !hasMainQuest ||
+    !hasSideQuest ||
+    !hasStoryGate ||
+    prologueView.allowPlayerControl ||
+    !gameplayView.allowPlayerControl
+  ) {
+    throw new Error("Milestone 5 contracts are incomplete.");
+  }
+
+  return district.object;
 }

@@ -4,13 +4,15 @@ import type { DebugFlags } from "../../diagnostics/debugFlags";
 import { AYODHYA_PALETTE, createFlatMaterial } from "../palette";
 import { createGradientSky } from "../sky/gradientSky";
 import { createFloorModule, createPropModule, createWallModule, type CollisionProxy } from "../../world/kits/proceduralKit";
-import { createAyodhyaCourtyard } from "../../world/scenes/ayodhyaCourtyard";
+import { createAyodhyaDistrict, type AyodhyaInteraction } from "../../world/scenes/ayodhyaDistrict";
 
 export interface SceneSetup {
   scene: THREE.Scene;
   validationMesh: THREE.Object3D | null;
   player: THREE.Object3D;
   collision: CollisionProxy[];
+  interactions: AyodhyaInteraction[];
+  npcs: THREE.Object3D[];
 }
 
 export function createScene(debugFlags: DebugFlags): SceneSetup {
@@ -31,8 +33,8 @@ export function createScene(debugFlags: DebugFlags): SceneSetup {
   scene.add(sun);
 
   const validationMesh = debugFlags.showPrimitiveValidationScene ? createDevValidationMesh() : null;
-  const courtyard = createAyodhyaCourtyard();
-  scene.add(courtyard.object);
+  const district = createAyodhyaDistrict();
+  scene.add(district.object);
 
   if (validationMesh) {
     scene.add(validationMesh);
@@ -41,8 +43,10 @@ export function createScene(debugFlags: DebugFlags): SceneSetup {
   return {
     scene,
     validationMesh,
-    player: courtyard.player,
-    collision: courtyard.collision,
+    player: district.player,
+    collision: district.collision,
+    interactions: district.interactions,
+    npcs: district.npcs,
   };
 }
 
