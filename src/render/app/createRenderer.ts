@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 export function createRenderer(): THREE.WebGLRenderer {
   const renderer = new THREE.WebGLRenderer({
-    antialias: true,
+    antialias: false,
     powerPreference: "high-performance",
   });
 

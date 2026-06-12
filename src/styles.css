@@ -29,6 +29,29 @@ canvas {
   height: 100%;
 }
 
+.graphics-settings {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 164px;
+  padding: 10px 12px;
+  border: 1px solid rgb(243 221 182 / 42%);
+  border-radius: 6px;
+  background: rgb(27 20 14 / 72%);
+  color: #f3ddb6;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.graphics-settings input {
+  width: 92px;
+  accent-color: #dc6f2d;
+}
+
 .screen-layer {
   position: fixed;
   inset: 0;
