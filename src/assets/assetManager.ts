@@ -1,4 +1,4 @@
-import bootManifestUrl from "../../assets/catalog/assets.manifest.json?url";
+import bootManifest from "../../assets/catalog/assets.manifest.json";
 
 export type AssetKind =
   | "character"
@@ -27,13 +27,7 @@ export interface AssetManifestEntry {
 }
 
 export async function loadBootManifest(): Promise<AssetManifestEntry[]> {
-  const response = await fetch(bootManifestUrl);
-
-  if (!response.ok) {
-    throw new Error(`Unable to load boot asset manifest: ${response.status}`);
-  }
-
-  const manifest = (await response.json()) as unknown;
+  const manifest = bootManifest as unknown;
 
   if (!Array.isArray(manifest)) {
     throw new Error("Asset manifest must be a JSON array.");
