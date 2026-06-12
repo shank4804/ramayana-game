@@ -3,6 +3,8 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 
 import { createFlatMaterial, AYODHYA_PALETTE } from "./render/palette";
 import { createPixelationPass, createPostPipeline } from "./render/post/postPipeline";
+import { createRamaStandInCharacter } from "./assets/characters/ramaStandIn";
+import { createAyodhyaCourtyard } from "./world/scenes/ayodhyaCourtyard";
 import { createFloorModule, createPropModule, createWallModule } from "./world/kits/proceduralKit";
 
 export function verifyMilestone2Contracts(
@@ -23,4 +25,26 @@ export function verifyMilestone2Contracts(
   }
 
   return composer;
+}
+
+export function verifyMilestone3Contracts(): THREE.Object3D {
+  const character = createRamaStandInCharacter({
+    primarySwap: AYODHYA_PALETTE.saffron.base,
+    secondarySwap: AYODHYA_PALETTE.gold.base,
+  });
+  const courtyard = createAyodhyaCourtyard();
+
+  if (!character.recolorMaterial.uniforms.primarySwap || !character.recolorMaterial.uniforms.secondarySwap) {
+    throw new Error("Character recolor material must expose two palette-swap uniforms.");
+  }
+
+  if (!character.accessorySockets.back) {
+    throw new Error("Character must expose a back accessory socket.");
+  }
+
+  if (!courtyard.object.getObjectByName("rama-stand-in")) {
+    throw new Error("Courtyard must include the Rama look-dev stand-in.");
+  }
+
+  return courtyard.object;
 }

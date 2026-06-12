@@ -38,10 +38,13 @@ declare module "three" {
     public renderOrder: number;
     public readonly position: Vector3;
     public readonly rotation: {
+      x: number;
       y: number;
+      z: number;
     };
     public readonly scale: Vector3;
     public add(...objects: Object3D[]): void;
+    public getObjectByName(name: string): Object3D | undefined;
     public traverse(callback: (child: Object3D) => void): void;
   }
 
@@ -101,6 +104,10 @@ declare module "three" {
 
   export class ConeGeometry {
     public constructor(radius: number, height: number, radialSegments?: number);
+  }
+
+  export class TorusGeometry {
+    public constructor(radius: number, tube: number, radialSegments?: number, tubularSegments?: number, arc?: number);
   }
 
   export class IcosahedronGeometry {

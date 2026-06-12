@@ -4,6 +4,7 @@ import type { DebugFlags } from "../../diagnostics/debugFlags";
 import { AYODHYA_PALETTE, createFlatMaterial } from "../palette";
 import { createGradientSky } from "../sky/gradientSky";
 import { createFloorModule, createPropModule, createWallModule } from "../../world/kits/proceduralKit";
+import { createAyodhyaCourtyard } from "../../world/scenes/ayodhyaCourtyard";
 
 export interface SceneSetup {
   scene: THREE.Scene;
@@ -28,6 +29,8 @@ export function createScene(debugFlags: DebugFlags): SceneSetup {
   scene.add(sun);
 
   const validationMesh = debugFlags.showPrimitiveValidationScene ? createDevValidationMesh() : null;
+  const courtyard = createAyodhyaCourtyard();
+  scene.add(courtyard.object);
 
   if (validationMesh) {
     scene.add(validationMesh);
