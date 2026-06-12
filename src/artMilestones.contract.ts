@@ -74,6 +74,7 @@ export function verifyMilestone4Contracts(camera: THREE.PerspectiveCamera): THRE
   controller.update(1 / 60, input);
   hud.update({
     health: 100,
+    mode: controller.state.mode,
     objective: "Explore Ayodhya courtyard",
     prompt: "Move Rama",
     speed: controller.state.speed,

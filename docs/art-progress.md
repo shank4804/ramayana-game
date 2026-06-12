@@ -38,7 +38,8 @@
 - [x] Right mouse / left trigger controls shoulder aim camera mode.
 - [x] GTA-like third-person camera follows Rama with orbit and shoulder aim distances.
 - [x] Gameplay controller uses collision proxies instead of render meshes.
-- [x] Minimal HUD shows health, objective, prompt, and current speed.
+- [x] Walkable floor collision proxies are excluded from horizontal movement blockers.
+- [x] Minimal HUD shows health, objective, prompt, controller mode, and current speed.
 - [x] Vite config dedupes `three` resolution to address duplicate Three.js imports.
 - [ ] Rapier collision backend is blocked until `@dimforge/rapier3d-compat` can be installed; npm registry lookup fails and the offline cache does not contain an installable package body.
 - [ ] Removing local Three.js type stubs is blocked until real declarations can be installed; `three@0.182.0` in this repo does not ship `.d.ts` files and `@types/three@0.182.0` is not installable from the current npm cache.

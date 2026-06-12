@@ -7,6 +7,7 @@ export interface CollisionProxy {
   shape: "box" | "cylinder" | "sphere";
   position: THREE.Vector3Tuple;
   size: THREE.Vector3Tuple;
+  blocksMovement?: boolean;
 }
 
 export interface KitModule {
@@ -68,6 +69,7 @@ export function createFloorModule(options: FloorModuleOptions): KitModule {
         shape: "box",
         position: [0, -0.09, 0],
         size: [options.width, 0.18, options.depth],
+        blocksMovement: false,
       },
     ],
   };

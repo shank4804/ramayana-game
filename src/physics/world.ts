@@ -49,7 +49,7 @@ export function createCollisionWorld(collision: readonly CollisionProxy[]): Coll
 
 function isBlocked(probe: MovementProbe, collision: readonly CollisionProxy[]): boolean {
   return collision.some((proxy) => {
-    if (proxy.shape === "sphere") {
+    if (proxy.blocksMovement === false || proxy.shape === "sphere") {
       return false;
     }
 

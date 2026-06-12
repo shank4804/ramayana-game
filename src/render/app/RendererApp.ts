@@ -96,6 +96,7 @@ export class RendererApp {
     this.controller.update(deltaSeconds, input);
     this.hud.update({
       health: this.controller.state.health,
+      mode: this.controller.state.mode,
       objective: "Explore the Ayodhya courtyard",
       prompt: input.interact ? "No interaction nearby" : "WASD move - drag orbit - right mouse aim",
       speed: this.controller.state.speed,

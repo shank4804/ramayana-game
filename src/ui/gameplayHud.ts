@@ -1,5 +1,6 @@
 export interface GameplayHudState {
   health: number;
+  mode: string;
   objective: string;
   prompt: string;
   speed: number;
@@ -31,7 +32,7 @@ export function createGameplayHud(): GameplayHud {
     update(state) {
       health.textContent = `Health ${Math.round(state.health)}`;
       objective.textContent = state.objective;
-      prompt.textContent = `${state.prompt} · ${state.speed.toFixed(1)} m/s`;
+      prompt.textContent = `${state.prompt} - ${state.mode} - ${state.speed.toFixed(1)} m/s`;
     },
   };
 }
