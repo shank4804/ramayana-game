@@ -3,12 +3,14 @@ import * as THREE from "three";
 import type { DebugFlags } from "../../diagnostics/debugFlags";
 import { AYODHYA_PALETTE, createFlatMaterial } from "../palette";
 import { createGradientSky } from "../sky/gradientSky";
-import { createFloorModule, createPropModule, createWallModule } from "../../world/kits/proceduralKit";
+import { createFloorModule, createPropModule, createWallModule, type CollisionProxy } from "../../world/kits/proceduralKit";
 import { createAyodhyaCourtyard } from "../../world/scenes/ayodhyaCourtyard";
 
 export interface SceneSetup {
   scene: THREE.Scene;
   validationMesh: THREE.Object3D | null;
+  player: THREE.Object3D;
+  collision: CollisionProxy[];
 }
 
 export function createScene(debugFlags: DebugFlags): SceneSetup {
@@ -39,6 +41,8 @@ export function createScene(debugFlags: DebugFlags): SceneSetup {
   return {
     scene,
     validationMesh,
+    player: courtyard.player,
+    collision: courtyard.collision,
   };
 }
 

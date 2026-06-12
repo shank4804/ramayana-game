@@ -17,6 +17,7 @@ import {
 export interface AyodhyaCourtyardScene {
   object: THREE.Group;
   collision: CollisionProxy[];
+  player: THREE.Object3D;
 }
 
 export function createAyodhyaCourtyard(): AyodhyaCourtyardScene {
@@ -30,11 +31,12 @@ export function createAyodhyaCourtyard(): AyodhyaCourtyardScene {
   addGate(courtyard, collision);
   addProps(courtyard, collision);
   addNature(courtyard, collision);
-  addCharacter(courtyard);
+  const player = addCharacter(courtyard);
 
   return {
     object: courtyard,
     collision,
+    player,
   };
 }
 
@@ -111,7 +113,7 @@ function addNature(courtyard: THREE.Group, collision: CollisionProxy[]): void {
   addModule(courtyard, collision, rock);
 }
 
-function addCharacter(courtyard: THREE.Group): void {
+function addCharacter(courtyard: THREE.Group): THREE.Object3D {
   const rama = createRamaStandInCharacter({
     primarySwap: AYODHYA_PALETTE.saffron.base,
     secondarySwap: AYODHYA_PALETTE.gold.base,
@@ -121,9 +123,19 @@ function addCharacter(courtyard: THREE.Group): void {
   rama.object.position.set(0, 0, 0.9);
   rama.object.rotation.y = Math.PI;
   courtyard.add(rama.object);
+  return rama.object;
 }
 
 function addModule(courtyard: THREE.Group, collision: CollisionProxy[], module: { object: THREE.Object3D; collision: CollisionProxy[] }): void {
   courtyard.add(module.object);
-  collision.push(...module.collision);
+  collision.push(
+    ...module.collision.map((proxy) => ({
+      ...proxy,
+      position: [
+        proxy.position[0] + module.object.position.x,
+        proxy.position[1] + module.object.position.y,
+        proxy.position[2] + module.object.position.z,
+      ] satisfies THREE.Vector3Tuple,
+    })),
+  );
 }

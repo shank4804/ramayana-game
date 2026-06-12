@@ -1,6 +1,11 @@
 import * as THREE from "three";
 
 import type { DebugFlags } from "../../diagnostics/debugFlags";
+import { createThirdPersonCameraRig, type ThirdPersonCameraRig } from "../../gameplay/camera/thirdPersonCamera";
+import { createRamaController, type RamaController } from "../../gameplay/controller/ramaController";
+import { createInputMapper, type InputMapper } from "../../gameplay/input/inputMapper";
+import { createCollisionWorld } from "../../physics/world";
+import { createGameplayHud, type GameplayHud } from "../../ui/gameplayHud";
 import { clampPixelSize, createPostPipeline, getDefaultPixelSize, type PixelatedEffectComposer } from "../post/postPipeline";
 import { createCamera } from "./createCamera";
 import { createRenderer } from "./createRenderer";
@@ -14,12 +19,17 @@ interface RendererAppOptions {
 
 export class RendererApp {
   private readonly camera: THREE.PerspectiveCamera;
+  private readonly cameraRig: ThirdPersonCameraRig;
   private readonly composer: PixelatedEffectComposer;
+  private readonly controller: RamaController;
   private readonly graphicsSettings: HTMLElement;
+  private readonly hud: GameplayHud;
+  private readonly inputMapper: InputMapper;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
   private readonly validationMesh: THREE.Object3D | null;
   private disposed = false;
+  private lastFrameTime = 0;
 
   public constructor({ host, debugFlags }: RendererAppOptions) {
     this.renderer = createRenderer();
@@ -27,6 +37,14 @@ export class RendererApp {
     const sceneSetup = createScene(debugFlags);
     this.scene = sceneSetup.scene;
     this.validationMesh = sceneSetup.validationMesh;
+    this.cameraRig = createThirdPersonCameraRig(this.camera);
+    this.inputMapper = createInputMapper(window);
+    this.controller = createRamaController({
+      actor: sceneSetup.player,
+      collisionWorld: createCollisionWorld(sceneSetup.collision),
+      cameraRig: this.cameraRig,
+    });
+    this.hud = createGameplayHud();
     this.composer = createPostPipeline(this.renderer, this.scene, this.camera, {
       pixelSize: readSavedPixelSize(),
     });
@@ -34,6 +52,7 @@ export class RendererApp {
 
     host.appendChild(this.renderer.domElement);
     host.appendChild(this.graphicsSettings);
+    host.appendChild(this.hud.element);
     resizeRenderer(this.renderer, this.composer, this.camera);
 
     window.addEventListener("resize", this.handleResize);
@@ -52,10 +71,12 @@ export class RendererApp {
     this.disposed = true;
     window.removeEventListener("resize", this.handleResize);
     this.renderer.domElement.removeEventListener("webglcontextlost", this.handleContextLost);
+    this.inputMapper.dispose();
     this.renderer.setAnimationLoop(null);
     this.composer.dispose();
     this.renderer.dispose();
     this.graphicsSettings.remove();
+    this.hud.element.remove();
     this.renderer.domElement.remove();
   }
 
@@ -67,7 +88,19 @@ export class RendererApp {
     event.preventDefault();
   };
 
-  private readonly render = (_time: number): void => {
+  private readonly render = (time: number): void => {
+    const deltaSeconds = this.lastFrameTime === 0 ? 1 / 60 : Math.min(0.05, (time - this.lastFrameTime) / 1000);
+    this.lastFrameTime = time;
+    const input = this.inputMapper.getInputSnapshot();
+
+    this.controller.update(deltaSeconds, input);
+    this.hud.update({
+      health: this.controller.state.health,
+      objective: "Explore the Ayodhya courtyard",
+      prompt: input.interact ? "No interaction nearby" : "WASD move - drag orbit - right mouse aim",
+      speed: this.controller.state.speed,
+    });
+
     if (this.validationMesh) {
       this.validationMesh.rotation.y += 0.01;
     }

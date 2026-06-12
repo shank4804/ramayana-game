@@ -27,3 +27,18 @@
 - [x] Code-built bow and quiver accessories attach to the back socket.
 - [x] Root `CREDITS.md` lists the CC0 source used.
 - [x] `docs/art-progress.md` tracks art-pivot deliverables separately from existing progress files.
+
+## Milestone 4: Third-Person Rama Slice
+
+- [x] Rama stand-in is driven by a gameplay controller.
+- [x] Keyboard movement mapping supports walk direction.
+- [x] Keyboard sprint and dodge inputs are mapped.
+- [x] Gamepad movement, camera, sprint, dodge, interact, and aim inputs are mapped.
+- [x] Mouse drag controls third-person camera orbit.
+- [x] Right mouse / left trigger controls shoulder aim camera mode.
+- [x] GTA-like third-person camera follows Rama with orbit and shoulder aim distances.
+- [x] Gameplay controller uses collision proxies instead of render meshes.
+- [x] Minimal HUD shows health, objective, prompt, and current speed.
+- [x] Vite config dedupes `three` resolution to address duplicate Three.js imports.
+- [ ] Rapier collision backend is blocked until `@dimforge/rapier3d-compat` can be installed; npm registry lookup fails and the offline cache does not contain an installable package body.
+- [ ] Removing local Three.js type stubs is blocked until real declarations can be installed; `three@0.182.0` in this repo does not ship `.d.ts` files and `@types/three@0.182.0` is not installable from the current npm cache.

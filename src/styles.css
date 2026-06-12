@@ -52,6 +52,45 @@ canvas {
   accent-color: #dc6f2d;
 }
 
+.gameplay-hud {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 3;
+  display: grid;
+  gap: 7px;
+  max-width: min(360px, calc(100vw - 32px));
+  color: #fff8eb;
+  font-size: 0.86rem;
+  pointer-events: none;
+}
+
+.hud-health,
+.hud-objective,
+.hud-prompt {
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgb(243 221 182 / 34%);
+  border-radius: 6px;
+  background: rgb(27 20 14 / 72%);
+  line-height: 1.25;
+}
+
+.hud-health {
+  color: #f3ddb6;
+  font-weight: 800;
+}
+
+.hud-objective {
+  color: #fff8eb;
+  font-weight: 700;
+}
+
+.hud-prompt {
+  color: #e8bf82;
+}
+
 .screen-layer {
   position: fixed;
   inset: 0;
