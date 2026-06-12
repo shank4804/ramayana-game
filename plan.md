@@ -11,7 +11,12 @@ The guiding production rule is simple: the first playable version must already l
 ## Core Direction
 
 - Build the game with Vite, TypeScript, and Three.js.
+- Use `WebGLRenderer` for v1. Treat `WebGPURenderer`/TSL as a possible future migration, not a v1 target.
+- Pin Three.js and Rapier versions in `package.json` and upgrade deliberately, not automatically.
 - Use Rapier for physics, traversal collision, grounded third-person movement, triggers, and combat hit volumes.
+- Use `@dimforge/rapier3d-compat` (WASM inlined) to avoid bundler WASM-loading friction.
+- Use one post-processing path from the start (Three's `EffectComposer` or pmndrs/postprocessing) since bloom, AO, and ACES tone mapping are required by the graphics standard. Decide once and document it.
+- Target desktop-first input: keyboard/mouse and gamepad. Mobile/touch is explicitly out of scope for v1; camera, UI, and performance decisions assume desktop browsers.
 - Use GLB/glTF as the runtime asset format.
 - Use curated high-quality online GLB/glTF asset packs from day one for environments, props, foliage, weapons, animals, NPCs, and baseline humanoids.
 - Use Blender to customize, kitbash, clean, rig, retarget, export, and validate assets before they enter the game.
@@ -34,9 +39,21 @@ The game must look good to great from the first playable slice. It should not lo
 - Keep combat readability higher priority than visual effects density.
 - Every playable milestone needs a screenshot review at desktop and laptop resolutions before it is accepted.
 
+### Performance And Payload Budgets
+
+"Acceptable performance" is not measurable. Use these concrete targets and revise them deliberately if they prove wrong:
+
+- Frame rate: 60 FPS on a mid-tier laptop (M1 MacBook Air / GTX 1650 class) at 1080p with the high-quality preset.
+- Initial payload: under 25–50 MB downloaded before the title screen is interactive.
+- Region preload budget: under ~150 MB per hub preload group.
+- Loading time: Ayodhya hub playable in under 10 seconds on a 50 Mbps connection.
+- Scene budgets: roughly under 500 draw calls and under 1.5M visible triangles per frame; treat overruns as optimization tasks, not acceptable drift.
+
 ## Asset Strategy
 
 Use a hybrid asset strategy.
+
+Before sourcing assets for any region, build a cultural reference board for it (Ayodhya, Forest Exile, Kishkindha, Lanka): architectural references, costume and ornament references, color palettes, and named sources. Asset selection, recoloring, and the screenshot review's "cultural specificity" check are all judged against the region's reference board, not against memory or generic fantasy taste.
 
 1. **Curated online assets first**
    - Use existing online GLB/glTF, FBX, or Blender asset packs to reach a high visual bar quickly.
@@ -63,7 +80,8 @@ Use source libraries deliberately. Do not download random assets and hope they f
 - **Fab**
   - Best for higher-quality paid and free game-ready environment kits, characters, animations, props, and VFX.
   - Use for premium-looking city kits, palace interiors, modular architecture, foliage, character bases, weapons, and cinematic props.
-  - Prefer assets that include source formats or GLB/FBX exports and allow use outside Unreal.
+  - Hard rule: verify the license is engine-agnostic before purchase or download. Many Fab assets — notably Quixel Megascans free content — are licensed for Unreal Engine use only and are excluded from this project.
+  - Prefer assets that include source formats or GLB/FBX exports.
   - Track whether each asset is under the Fab Standard License, CC-BY, or another license.
   - Avoid assets that cannot legally be redistributed as part of a web game build.
 
@@ -95,6 +113,7 @@ Use source libraries deliberately. Do not download random assets and hope they f
   - Use mainly for humanoid rigging and animation prototyping.
   - Good for locomotion, idle, attack, dodge, hit, death, and traversal animation coverage.
   - Export animations, retarget in Blender when needed, and convert final animated characters to GLB.
+  - Requires an Adobe account; terms permit use in games but not redistribution of raw animation files. Record Mixamo clips in the provenance metadata like any other external asset.
   - Do not rely on Mixamo visual character defaults for final hero quality.
 
 - **CGTrader, TurboSquid, ArtStation, and similar marketplaces**
@@ -160,6 +179,7 @@ Hard license rules:
 - Do not expose raw purchased assets as easy standalone downloads if the license forbids redistribution.
 - Prefer CC0 for generic props, textures, HDRIs, foliage, rocks, and architecture pieces when quality is sufficient.
 - Use paid standard licenses for higher-quality hero-facing assets when needed.
+- Generate `assets/catalog/licenses/attribution.md` from `third-party-assets.json`, and surface it as an in-game credits screen so CC-BY attribution requirements are met in the shipped game, not just in the repo.
 
 ## Asset Directory Layout
 
@@ -213,9 +233,19 @@ assets/
 Repository policy:
 
 - Runtime `.glb`, `.ktx2`, and small metadata files can live in the repo when sizes are reasonable.
-- Large source assets should be tracked with Git LFS or documented as external downloads.
+- Large source assets live in external storage (object storage or a documented download location). Use Git LFS only for medium-sized files — GitHub LFS free-tier bandwidth quotas are easy to exhaust with multi-GB asset packs.
 - Never commit raw purchased asset packs if the license forbids sharing source files.
 - Keep `assets/catalog/third-party-assets.json` as the single audit source for all external content.
+
+## Deployment And Asset Hosting
+
+Decide hosting before assets grow large.
+
+- Host the game build on a static host (Cloudflare Pages, Vercel, or itch.io HTML5).
+- Serve runtime assets from a CDN-backed object store (e.g., Cloudflare R2) once total runtime asset size exceeds what the static host serves comfortably; the asset manifest's `url` field already abstracts the origin.
+- Keep source/working assets out of the deploy path entirely.
+- Verify the host serves correct MIME types and compression for `.glb`, `.ktx2`, and `.wasm` files.
+- Measure the initial payload and per-hub preload budgets against the deployed origin, not just the local dev server.
 
 ## GLB Production Pipeline
 
@@ -375,10 +405,12 @@ Typical commands:
 ```bash
 gltf-transform inspect input.glb
 gltf-transform validate input.glb
-gltf-transform optimize input.glb output.opt.glb --compress meshopt --texture-compress webp
+gltf-transform optimize input.glb output.opt.glb --compress meshopt --texture-compress ktx2
 ```
 
 Use Meshopt as the default geometry/animation compression path unless a specific asset proves Draco is better.
+
+Texture compression policy: KTX2 is the default runtime texture path (UASTC for normal maps, ETC1S for color/AO/roughness), matching the KTX2 strategy in the texture budget and runtime loading sections. Use WebP only as an explicit fallback for builds that do not include `KTX2Loader` — WebP is not GPU-compressed and saves download size but not GPU memory.
 
 Use `inspect` to catch:
 
@@ -638,6 +670,17 @@ Rules:
 - Keep gameplay movement mostly code-driven for controller reliability.
 - Use animation events or timeline markers for attack hit frames, footstep sounds, arrow release, and cinematic cues.
 
+## Audio Strategy
+
+Audio is part of the cinematic bar, not a polish afterthought.
+
+- Categories: music, ambience, SFX, UI sounds, and (deferred) voice-over. Dialogue is subtitles-only for the first slice; VO is a later decision.
+- Sourcing: same provenance and licensing rules as 3D assets. Prefer CC0 sources (Freesound CC0, Kenney audio, Sonniss GDC packs) and record every clip in `third-party-assets.json`.
+- Tech: decide once between `THREE.AudioListener`/`PositionalAudio` and Howler, and document the decision. Positional audio matters for ambience and combat readability.
+- First audio pass ships with the Ayodhya vertical slice, not the polish milestone: region ambience, footsteps, UI feedback, and one music bed.
+- Drive footsteps, attack impacts, and arrow release from the same animation events used for gameplay timing.
+- Respect browser autoplay policies: audio starts after first user interaction (the title screen handles this naturally).
+
 ## Asset Manifest Design
 
 The runtime should never load assets by random filenames scattered through code.
@@ -777,7 +820,8 @@ The simulation owns game truth. Three.js objects are visual adapters, not the so
 - `PlayableCharacter`: movement profile, camera profile, combat kit, abilities, animation set.
 - `Quest`: id, type, giver, objectives, rewards, required story state.
 - `CutsceneTimeline`: shots, actors, camera tracks, subtitles, triggers, skip behavior.
-- `SaveGame`: story progress, region state, character state, quests, settings, checkpoint.
+- `DialogueTree`: id, speaker, lines, choices, conditions, triggers; quest givers, NPC barks, and cutscene subtitles all reference dialogue entries rather than embedding raw strings.
+- `SaveGame`: story progress, region state, character state, quests, settings, checkpoint. Persist to IndexedDB (localStorage is too small for world state) with a versioned schema and an explicit migration policy for older saves.
 - `AssetManifestEntry`: asset id, kind, region, runtime URL, license id, scale, shadow flags, collider path, LOD paths, animation clips, preload group.
 - `AssetLicenseEntry`: source URL, author, license, attribution, redistribution restriction, modification permission, commercial-use permission.
 - `CollisionProxy`: id, shape type, transform, size, physics layer, gameplay tags.
@@ -785,10 +829,12 @@ The simulation owns game truth. Three.js objects are visual adapters, not the so
 
 ## Build Milestones
 
+Scope honesty: four hubs, four playable characters, and full cinematics is multi-year scope for a small team. Success for this plan is defined as Milestones 1–6 — the Ayodhya vertical slice plus combat and cinematics. Milestone 7 (Kanda Expansion) is re-planned only after the slice ships at quality; nothing in this document is a commitment to the full campaign on any timeline.
+
 ### 1. Clean Technical Reboot
 
 - Create a fresh Vite + TypeScript + Three.js app.
-- Add a title screen, loading screen, renderer, resize handling, and WebGL fallback.
+- Add a title screen, loading screen, renderer, resize handling, and a WebGL fallback — meaning a readable "WebGL2 required" error page for unsupported browsers, not a degraded renderer mode.
 - Add a minimal scene only to validate renderer, lighting, asset loading, and post-processing.
 - Add the initial `assets/` directory structure and metadata conventions before importing real content.
 
@@ -817,6 +863,7 @@ Acceptance:
 - Establish material, lighting, tone mapping, shadow, fog, bloom, and ambient occlusion rules before gameplay expands.
 - Build a small Ayodhya look-development courtyard using real assets.
 - Verify that the first screen already communicates the intended quality bar.
+- Parallel track: controller, camera, and physics work (Milestone 4) may proceed at the same time on graybox geometry behind the existing debug flag. The no-placeholder rule applies to playable builds, not development branches — asset sourcing must not stall engine validation.
 
 Acceptance:
 
@@ -848,6 +895,7 @@ Acceptance:
 - Add a Dasharatha prologue cutscene and transition to Rama gameplay.
 - Add one main quest and one side quest.
 - Add story gates that keep the player inside the Ayodhya section until the exile story beat.
+- Add the first audio pass: region ambience, footsteps, UI feedback, and one music bed.
 - Add streaming or preload boundaries if the district becomes too heavy for one load.
 
 Acceptance:
@@ -899,6 +947,15 @@ Acceptance:
 
 ## Testing And Acceptance
 
+### Code Tests And CI
+
+The simulation owns game truth, so it is the tested core.
+
+- Unit tests (Vitest) for `simulation`: quest state transitions, story gates, combat rules, progression, and save/load round-trips.
+- CI on every push: typecheck, lint, unit tests, and the asset manifest/license validation script.
+- Playwright smoke test: the game boots to the title screen with no console errors.
+- Renderer, physics feel, and animation quality stay under manual/visual review; do not attempt to unit test them.
+
 ### Asset Tests
 
 - Every manifest asset has license metadata.
@@ -934,7 +991,7 @@ Acceptance:
   - silhouette readability
   - lighting quality
   - scale consistency
-  - cultural specificity
+  - cultural specificity, judged against the region's reference board
   - visible placeholders
   - material mismatch
   - animation issues
