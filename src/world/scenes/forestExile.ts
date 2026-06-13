@@ -23,6 +23,7 @@ export interface ForestStoryGate {
 export interface ForestExileScene {
   object: THREE.Group;
   collision: CollisionProxy[];
+  player: THREE.Object3D;
   spawn: THREE.Vector3Tuple;
   storyGates: ForestStoryGate[];
   sideQuests: Array<{
@@ -41,12 +42,13 @@ export function createForestExileHub(): ForestExileScene {
   addHermitageCamp(hub, collision);
   addForestRing(hub, collision);
   addPathMarkers(hub, collision);
-  addCharacters(hub);
+  const player = addCharacters(hub);
   addContainment(collision);
 
   return {
     object: hub,
     collision,
+    player,
     spawn: [0, 0, -5.2],
     storyGates: [
       {
@@ -138,7 +140,7 @@ function addPathMarkers(hub: THREE.Group, collision: CollisionProxy[]): void {
   }
 }
 
-function addCharacters(hub: THREE.Group): void {
+function addCharacters(hub: THREE.Group): THREE.Object3D {
   const rama = createRamaStandInCharacter({
     primarySwap: "#c98236",
     secondarySwap: "#d6b15f",
@@ -159,6 +161,7 @@ function addCharacters(hub: THREE.Group): void {
   lakshmana.scale.set(0.96, 0.96, 0.96);
 
   hub.add(rama, lakshmana);
+  return rama;
 }
 
 function addContainment(collision: CollisionProxy[]): void {

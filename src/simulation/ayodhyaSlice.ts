@@ -27,6 +27,7 @@ export interface AyodhyaSliceView {
   notification: string;
   activeInteractionId: AyodhyaInteraction["id"] | null;
   audioCue: AyodhyaAudioCue;
+  transitionTo: "forestExile" | null;
 }
 
 export interface AyodhyaSliceDirector {
@@ -84,12 +85,16 @@ export function createAyodhyaSliceDirector(interactions: readonly AyodhyaInterac
           notification,
           activeInteractionId: null,
           audioCue,
+          transitionTo: null,
         };
       }
 
       const nearest = findNearestInteraction(interactions, playerPosition);
+      let transitionTo: AyodhyaSliceView["transitionTo"] = null;
       if (nearest && interactPressed) {
-        audioCue = handleInteraction(nearest);
+        const result = handleInteraction(nearest);
+        audioCue = result.audioCue;
+        transitionTo = result.transitionTo;
       }
 
       tickNotification(deltaSeconds);
@@ -97,21 +102,22 @@ export function createAyodhyaSliceDirector(interactions: readonly AyodhyaInterac
       return {
         allowPlayerControl: true,
         objective: getCurrentObjective(state),
-        prompt: nearest ? nearest.prompt : "WASD move - drag orbit - right mouse aim",
+        prompt: nearest ? getInteractionPrompt(nearest, state) : "WASD move - drag orbit - right mouse aim",
         notification,
         activeInteractionId: nearest?.id ?? null,
         audioCue,
+        transitionTo,
       };
     },
   };
 
-  function handleInteraction(interaction: AyodhyaInteraction): AyodhyaAudioCue {
+  function handleInteraction(interaction: AyodhyaInteraction): Pick<AyodhyaSliceView, "audioCue" | "transitionTo"> {
     if (interaction.id === "dasharathaBlessing" && state.mainQuest.status === "active") {
       state.mainQuest.status = "complete";
       state.mainQuest.objective = "Meet the guards at the city gate";
       notification = "Main quest complete: Dasharatha gives Rama his blessing.";
       notificationTime = 4.5;
-      return "quest";
+      return { audioCue: "quest", transitionTo: null };
     }
 
     if (interaction.id === "marketLamps" && state.sideQuest.status === "active") {
@@ -119,16 +125,22 @@ export function createAyodhyaSliceDirector(interactions: readonly AyodhyaInterac
       state.sideQuest.objective = "The market lamps are lit for evening prayers";
       notification = "Side quest complete: Market Lamps.";
       notificationTime = 4.0;
-      return "quest";
+      return { audioCue: "quest", transitionTo: null };
     }
 
     if (interaction.kind === "storyGate") {
+      if (state.mainQuest.status === "complete") {
+        notification = "Rama accepts exile and leaves Ayodhya for the forest.";
+        notificationTime = 3.8;
+        return { audioCue: "quest", transitionTo: "forestExile" };
+      }
+
       notification = "Story gate: Ayodhya remains closed until the exile story beat.";
       notificationTime = 3.4;
-      return "ui";
+      return { audioCue: "ui", transitionTo: null };
     }
 
-    return "ui";
+    return { audioCue: "ui", transitionTo: null };
   }
 
   function tickNotification(deltaSeconds: number): void {
@@ -137,6 +149,14 @@ export function createAyodhyaSliceDirector(interactions: readonly AyodhyaInterac
       notification = "";
     }
   }
+}
+
+function getInteractionPrompt(interaction: AyodhyaInteraction, state: AyodhyaSliceDirectorState): string {
+  if (interaction.kind === "storyGate" && state.mainQuest.status === "complete") {
+    return "Press E to accept exile and enter Forest Exile";
+  }
+
+  return interaction.prompt;
 }
 
 function getCurrentObjective(state: AyodhyaSliceDirectorState): string {
@@ -149,7 +169,7 @@ function getCurrentObjective(state: AyodhyaSliceDirectorState): string {
   }
 
   if (state.mainQuest.status === "complete") {
-    return "Approach a city gate to inspect the story boundary";
+    return "Approach a city gate to begin exile";
   }
 
   return "Explore Ayodhya";

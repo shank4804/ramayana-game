@@ -14,6 +14,7 @@ import { clampPixelSize, createPostPipeline, getDefaultPixelSize, type Pixelated
 import { createCamera } from "./createCamera";
 import { createRenderer } from "./createRenderer";
 import { createScene } from "./createScene";
+import type { LoadedWorldHub, WorldHubId, WorldHubManager } from "./hubManager";
 import { resizeRenderer } from "./resizeRenderer";
 
 interface RendererAppOptions {
@@ -24,43 +25,47 @@ interface RendererAppOptions {
 export class RendererApp {
   private readonly audio: AyodhyaAudioPass;
   private readonly camera: THREE.PerspectiveCamera;
-  private readonly cameraRig: ThirdPersonCameraRig;
-  private readonly combat: CombatEncounter;
+  private cameraRig: ThirdPersonCameraRig;
+  private combat: CombatEncounter;
   private readonly composer: PixelatedEffectComposer;
-  private readonly controller: RamaController;
+  private controller: RamaController;
   private readonly cutscene: CutscenePlayer;
+  private readonly debugFlags: DebugFlags;
   private readonly graphicsSettings: HTMLElement;
   private readonly hud: GameplayHud;
   private readonly inputMapper: InputMapper;
-  private readonly player: THREE.Object3D;
+  private player: THREE.Object3D;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private activeHub: LoadedWorldHub;
   private readonly sliceDirector: AyodhyaSliceDirector;
-  private readonly validationMesh: THREE.Object3D | null;
+  private readonly hubManager: WorldHubManager;
   private courtCutsceneStarted = false;
   private defeatTimer = 0;
   private disposed = false;
+  private lastForestInteract = false;
   private lastFrameTime = 0;
   private readonly spawnPosition = new THREE.Vector3();
 
   public constructor({ host, debugFlags }: RendererAppOptions) {
+    this.debugFlags = debugFlags;
     this.renderer = createRenderer();
     this.camera = createCamera();
     const sceneSetup = createScene(debugFlags);
     this.scene = sceneSetup.scene;
-    this.validationMesh = sceneSetup.validationMesh;
-    this.player = sceneSetup.player;
+    this.hubManager = sceneSetup.hubManager;
+    this.activeHub = sceneSetup.hub;
+    this.player = this.activeHub.player;
     this.spawnPosition.copy(this.player.position);
-    this.cameraRig = createThirdPersonCameraRig(this.camera, sceneSetup.collision);
+    this.cameraRig = createThirdPersonCameraRig(this.camera, this.activeHub.collision);
     this.inputMapper = createInputMapper(window);
-    this.combat = createCombatEncounter();
-    this.scene.add(this.combat.root);
+    this.combat = this.createCombatForActiveHub();
     this.controller = createRamaController({
-      actor: sceneSetup.player,
-      collisionWorld: createCollisionWorld(sceneSetup.collision),
+      actor: this.player,
+      collisionWorld: createCollisionWorld(this.activeHub.collision),
       cameraRig: this.cameraRig,
     });
-    this.sliceDirector = createAyodhyaSliceDirector(sceneSetup.interactions);
+    this.sliceDirector = createAyodhyaSliceDirector(this.activeHub.ayodhyaInteractions);
     this.cutscene = createCutscenePlayer(this.camera);
     this.audio = createAyodhyaAudioPass(window);
     this.hud = createGameplayHud();
@@ -75,6 +80,7 @@ export class RendererApp {
     resizeRenderer(this.renderer, this.composer, this.camera);
 
     window.addEventListener("resize", this.handleResize);
+    window.addEventListener("keydown", this.handleDebugKeyDown);
     this.renderer.domElement.addEventListener("webglcontextlost", this.handleContextLost);
   }
 
@@ -89,10 +95,12 @@ export class RendererApp {
 
     this.disposed = true;
     window.removeEventListener("resize", this.handleResize);
+    window.removeEventListener("keydown", this.handleDebugKeyDown);
     this.renderer.domElement.removeEventListener("webglcontextlost", this.handleContextLost);
     this.inputMapper.dispose();
     this.audio.dispose();
     this.renderer.setAnimationLoop(null);
+    this.hubManager.dispose();
     this.composer.dispose();
     this.renderer.dispose();
     this.graphicsSettings.remove();
@@ -112,8 +120,26 @@ export class RendererApp {
     const deltaSeconds = this.lastFrameTime === 0 ? 1 / 60 : Math.min(0.05, (time - this.lastFrameTime) / 1000);
     this.lastFrameTime = time;
     const input = this.inputMapper.getInputSnapshot();
-    const sliceView = this.sliceDirector.update(deltaSeconds, input, this.player.position);
-    if (sliceView.allowPlayerControl && !this.courtCutsceneStarted && !input.interact) {
+    const hubView = this.updateActiveHubView(deltaSeconds, input);
+
+    if (hubView.transitionTo) {
+      this.loadHub(hubView.transitionTo);
+      this.hud.update({
+        health: this.controller.state.health,
+        mode: "idle",
+        combatStatus: this.combat.state.statusText,
+        crosshair: false,
+        notification: hubView.notification,
+        objective: this.getHubObjective(),
+        prompt: this.getHubPrompt(),
+        speed: 0,
+        subtitle: "",
+      });
+      this.composer.render();
+      return;
+    }
+
+    if (this.activeHub.id === "ayodhya" && hubView.allowPlayerControl && !this.courtCutsceneStarted && !input.interact) {
       this.cutscene.start(DASHARATHA_COURT_CUTSCENE);
       this.courtCutsceneStarted = true;
     }
@@ -122,7 +148,7 @@ export class RendererApp {
       skip: input.cancel || input.interact,
     });
     const defeated = this.defeatTimer > 0 || this.controller.state.health <= 0;
-    const controlLocked = !sliceView.allowPlayerControl || cutsceneView.active || defeated;
+    const controlLocked = !hubView.allowPlayerControl || cutsceneView.active || defeated;
     const combatState = controlLocked
       ? this.combat.state
       : this.combat.update(deltaSeconds, this.player, {
@@ -149,33 +175,176 @@ export class RendererApp {
       defeatMessage = "Rama falls - returning to the palace street";
       if (this.defeatTimer === 0) {
         this.player.position.copy(this.spawnPosition);
-        this.player.rotation.y = Math.PI;
+        this.player.rotation.y = this.activeHub.id === "forestExile" ? 0 : Math.PI;
         this.controller.state.health = 100;
-        defeatMessage = "Rama recovers at the palace street";
+        defeatMessage = this.activeHub.id === "forestExile" ? "Rama recovers at the forest camp" : "Rama recovers at the palace street";
       }
     }
     this.audio.update(deltaSeconds, {
-      cue: sliceView.audioCue,
+      cue: hubView.audioCue,
       moving: this.controller.state.speed > 0.15,
       speed: this.controller.state.speed,
     });
+    const hudMode = this.getHudMode(combatState);
     this.hud.update({
       health: this.controller.state.health,
-      mode: this.controller.state.health <= 0 || this.defeatTimer > 0 ? "dead" : combatState.actionMode === "attack" ? "attack" : this.controller.state.mode,
+      mode: hudMode,
       combatStatus: combatState.statusText,
       crosshair: combatState.crosshair,
-      notification: defeatMessage || sliceView.notification,
-      objective: sliceView.objective,
-      prompt: sliceView.prompt,
+      notification: defeatMessage || hubView.notification,
+      objective: hubView.objective,
+      prompt: hubView.prompt,
       speed: this.controller.state.speed,
       subtitle: cutsceneView.subtitle,
     });
 
-    if (this.validationMesh) {
-      this.validationMesh.rotation.y += 0.01;
+    for (const debugObject of this.activeHub.debugObjects) {
+      debugObject.rotation.y += 0.01;
     }
 
     this.composer.render();
+  };
+
+  private readonly handleDebugKeyDown = (event: KeyboardEvent): void => {
+    if (!this.debugFlags.enableHubDebugHotkeys || event.code !== "KeyH" || event.repeat) {
+      return;
+    }
+
+    this.loadHub(this.activeHub.id === "ayodhya" ? "forestExile" : "ayodhya");
+  };
+
+  private updateActiveHubView(deltaSeconds: number, input: PlayerInputSnapshot): HubView {
+    if (this.activeHub.id === "ayodhya") {
+      const view = this.sliceDirector.update(deltaSeconds, input, this.player.position);
+      return {
+        allowPlayerControl: view.allowPlayerControl,
+        audioCue: view.audioCue,
+        notification: view.notification,
+        objective: view.objective,
+        prompt: view.prompt,
+        transitionTo: view.transitionTo,
+      };
+    }
+
+    return this.updateForestHubView(input);
+  }
+
+  private updateForestHubView(input: PlayerInputSnapshot): HubView {
+    const interactPressed = input.interact && !this.lastForestInteract;
+    this.lastForestInteract = input.interact;
+    const gate = findNearestForestGate(this.activeHub, this.player.position);
+    const baseView: HubView = {
+      allowPlayerControl: true,
+      audioCue: null,
+      notification: "",
+      objective: "Forest Exile: regroup at the hermitage",
+      prompt: gate ? `Press E: ${gate.label}` : "WASD move - Q lock - E at forest gates",
+      transitionTo: null,
+    };
+
+    if (!gate || !interactPressed) {
+      return baseView;
+    }
+
+    if (gate.id === "ayodhyaReturn") {
+      return {
+        ...baseView,
+        audioCue: "quest",
+        notification: "Rama returns to Ayodhya's gate road.",
+        transitionTo: "ayodhya",
+      };
+    }
+
+    return {
+      ...baseView,
+      audioCue: "ui",
+      notification: "The deeper forest path awaits a sage's blessing.",
+    };
+  }
+
+  private loadHub(id: WorldHubId): void {
+    const previousHealth = Math.max(1, this.controller.state.health);
+    const hub = this.hubManager.loadHub(id, getTransitionSpawn(id));
+    this.activeHub = hub;
+    this.player = hub.player;
+    this.spawnPosition.copy(this.player.position);
+    this.cameraRig = createThirdPersonCameraRig(this.camera, hub.collision);
+    this.combat = this.createCombatForActiveHub();
+    this.controller = createRamaController({
+      actor: this.player,
+      collisionWorld: createCollisionWorld(hub.collision),
+      cameraRig: this.cameraRig,
+    });
+    this.controller.state.health = previousHealth;
+    this.defeatTimer = 0;
+    this.lastForestInteract = false;
+    this.composer.setPalette(hub.palette);
+  }
+
+  private createCombatForActiveHub(): CombatEncounter {
+    const combat = createCombatEncounter();
+    this.activeHub.object.add(combat.root);
+    return combat;
+  }
+
+  private getHudMode(combatState: CombatEncounter["state"]): string {
+    if (this.controller.state.health <= 0 || this.defeatTimer > 0) {
+      return "dead";
+    }
+
+    if (combatState.actionMode === "attack" || combatState.actionMode === "aim") {
+      return combatState.actionMode;
+    }
+
+    return this.controller.state.mode;
+  }
+
+  private getHubObjective(): string {
+    return this.activeHub.id === "forestExile" ? "Forest Exile: regroup at the hermitage" : "Approach a city gate to begin exile";
+  }
+
+  private getHubPrompt(): string {
+    return this.activeHub.id === "forestExile" ? "WASD move - Q lock - E at forest gates" : "WASD move - drag orbit - right mouse aim";
+  }
+}
+
+interface HubView {
+  allowPlayerControl: boolean;
+  objective: string;
+  prompt: string;
+  notification: string;
+  audioCue: "ui" | "quest" | null;
+  transitionTo: WorldHubId | null;
+}
+
+function findNearestForestGate(hub: LoadedWorldHub, playerPosition: THREE.Vector3): LoadedWorldHub["forestStoryGates"][number] | null {
+  let nearest: LoadedWorldHub["forestStoryGates"][number] | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const gate of hub.forestStoryGates) {
+    const [x, , z] = gate.position;
+    const distance = Math.hypot(playerPosition.x - x, playerPosition.z - z);
+
+    if (distance <= gate.radius && distance < nearestDistance) {
+      nearest = gate;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearest;
+}
+
+function getTransitionSpawn(id: WorldHubId): { spawnPosition: THREE.Vector3Tuple; yaw: number } {
+  if (id === "forestExile") {
+    return {
+      spawnPosition: [0, 0, -5.2],
+      yaw: 0,
+    };
+  }
+
+  return {
+    spawnPosition: [11.2, 0, 4.6],
+    yaw: -Math.PI * 0.5,
   };
 }
 

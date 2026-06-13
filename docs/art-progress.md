@@ -75,7 +75,9 @@
 - [x] Lock-on cycles nearby enemies with `Q` and renders a visible indicator above the target.
 - [x] Combat HUD reports locked target name and HP.
 - [x] Lock-on subtly focuses the third-person camera toward the target.
+- [x] Lock-on rotates Rama toward the locked target before attacks resolve.
 - [x] HUD mode reflects attack and dead states.
+- [x] HUD mode explicitly reflects attack and aim combat states.
 - [x] Player defeat at 0 health locks control, shows a defeat message, and respawns Rama with restored health.
 - [x] Rakshasa and guard enemy types are placed with patrol, detect, chase, attack, and return states.
 - [x] Data-driven cutscene timelines define camera keyframes, subtitles, and trigger metadata.
@@ -92,6 +94,12 @@
 - [x] Forest Exile hub emits collision for floor, trees, rocks, hut, campfire, and containment boundaries.
 - [x] Forest Exile defines story-gated paths for Ayodhya return and deeper forest progression.
 - [x] Forest Exile defines a first side quest hook for gathering firewood.
+- [x] Runtime hub manager can unload and load Ayodhya and Forest Exile hubs.
+- [x] Ayodhya story gates transition to Forest Exile after the main quest is complete.
+- [x] Forest Exile return gate transitions back to Ayodhya.
+- [x] Controller, camera collision, combat, spawn, HUD, and pixel palette are rebound after hub transitions.
+- [x] Previous hub object trees are removed and disposed during transitions.
+- [x] Debug hub toggle hotkey is available behind the `debugHubs=1` flag.
 - [ ] Kishkindha hub kit and palette are not started.
 - [ ] Lanka hub kit and palette are not started.
 - [ ] Hanuman playable traversal profile is deferred until Kishkindha.

@@ -1,8 +1,16 @@
 import * as THREE from "three";
 
-import { AYODHYA_PALETTE, type RegionPalette } from "../palette";
+import { AYODHYA_PALETTE } from "../palette";
 
-export function createGradientSky(palette: RegionPalette = AYODHYA_PALETTE): THREE.Mesh {
+export interface GradientSkyPalette {
+  readonly sky: {
+    readonly top: string;
+    readonly horizon: string;
+    readonly ground: string;
+  };
+}
+
+export function createGradientSky(palette: GradientSkyPalette = AYODHYA_PALETTE): THREE.Mesh {
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(120, 16, 8),
     new THREE.ShaderMaterial({
@@ -40,7 +48,7 @@ export function createGradientSky(palette: RegionPalette = AYODHYA_PALETTE): THR
     }),
   );
 
-  sky.name = "ayodhya-gradient-sky";
+  sky.name = "gradient-sky";
   sky.renderOrder = -1000;
   return sky;
 }

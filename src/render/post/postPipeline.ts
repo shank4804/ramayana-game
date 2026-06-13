@@ -3,13 +3,13 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 
-import { AYODHYA_PALETTE, createPaletteVectors, type RegionPalette } from "../palette";
+import { AYODHYA_PALETTE, createPaletteVectors, type ShaderPaletteSource } from "../palette";
 
 export type PostPipelineMode = "boot-validation" | "gameplay";
 
 export interface PixelationSettings {
   pixelSize: number;
-  palette?: RegionPalette;
+  palette?: ShaderPaletteSource;
 }
 
 const DEFAULT_PIXEL_SIZE = 3;
@@ -46,6 +46,12 @@ export class PixelatedEffectComposer extends EffectComposer {
     this.pixelSize = clampPixelSize(pixelSize);
     updatePixelationUniforms(this.pixelationPass, this.pixelSize, this.renderTarget1.width, this.renderTarget1.height);
     this.setSize(this.logicalWidth, this.logicalHeight);
+  }
+
+  public setPalette(palette: ShaderPaletteSource): void {
+    const paletteVectors = createPaletteVectors(palette);
+    this.pixelationPass.uniforms.paletteColors!.value = paletteVectors;
+    this.pixelationPass.uniforms.paletteSize!.value = paletteVectors.length;
   }
 
   public override setSize(width: number, height: number): void {

@@ -126,6 +126,8 @@ export function createCombatEncounter(root = new THREE.Group()): CombatEncounter
         state.lockedEnemyId = cycleLockTarget(enemies, player, state.lockedEnemyId);
       }
 
+      faceLockedTarget(player, enemies, state.lockedEnemyId);
+
       if (input.attack && !previousAttack) {
         if (input.aim) {
           fireArrow(root, projectiles, player);
@@ -394,6 +396,21 @@ function updateLockIndicators(enemies: CombatEnemy[], lockedId: string | null): 
     const visibleScale = enemy.id === lockedId && enemy.state !== "dead" ? 1.85 : 0.001;
     indicator?.scale.set(visibleScale, visibleScale, visibleScale);
   }
+}
+
+function faceLockedTarget(player: THREE.Object3D, enemies: CombatEnemy[], lockedId: string | null): void {
+  const locked = enemies.find((enemy) => enemy.id === lockedId && enemy.state !== "dead");
+  if (!locked) {
+    return;
+  }
+
+  const dx = locked.object.position.x - player.position.x;
+  const dz = locked.object.position.z - player.position.z;
+  if (Math.hypot(dx, dz) < 0.001) {
+    return;
+  }
+
+  player.rotation.y = Math.atan2(dx, dz);
 }
 
 function formatCombatStatus(enemies: CombatEnemy[], lockedId: string | null, eventText: string): string {

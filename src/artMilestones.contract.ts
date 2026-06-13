@@ -16,6 +16,7 @@ import { createCollisionWorld } from "./physics/world";
 import { createAyodhyaSliceDirector } from "./simulation/ayodhyaSlice";
 import { createGameplayHud } from "./ui/gameplayHud";
 import { FOREST_EXILE_PALETTE } from "./render/forestPalette";
+import { createWorldHubManager } from "./render/app/hubManager";
 import {
   createCampfireModule,
   createDenseForestTreeModule,
@@ -167,6 +168,10 @@ export function verifyMilestone6Contracts(camera: THREE.PerspectiveCamera): THRE
   firstEnemy.object.position.set(0, 0, 1.15);
   combat.update(1 / 60, player, { attack: true, aim: false, dodge: false, lockOn: false });
   combat.update(1 / 60, player, { attack: false, aim: false, dodge: true, lockOn: true });
+  firstEnemy.object.position.set(1.25, 0, 0);
+  combat.update(1 / 60, player, { attack: false, aim: false, dodge: false, lockOn: false });
+  const lockFacingDelta = Math.abs(normalizedAngle(player.rotation.y - Math.PI * 0.5));
+  combat.update(1 / 60, player, { attack: false, aim: true, dodge: false, lockOn: false });
   cutscene.start(DASHARATHA_COURT_CUTSCENE);
   const cutsceneView = cutscene.update(1, { skip: false });
   cutscene.update(0.1, { skip: true });
@@ -177,6 +182,8 @@ export function verifyMilestone6Contracts(camera: THREE.PerspectiveCamera): THRE
     firstEnemy.hp >= firstEnemy.maxHp ||
     combat.state.invincibleTimer <= 0 ||
     !combat.state.lockedEnemyId ||
+    lockFacingDelta > 0.18 ||
+    combat.state.actionMode !== "aim" ||
     !cutsceneView.subtitle ||
     cutscene.state.active
   ) {
@@ -186,8 +193,33 @@ export function verifyMilestone6Contracts(camera: THREE.PerspectiveCamera): THRE
   return root;
 }
 
+function normalizedAngle(angle: number): number {
+  let normalized = angle;
+
+  while (normalized > Math.PI) {
+    normalized -= Math.PI * 2;
+  }
+
+  while (normalized < -Math.PI) {
+    normalized += Math.PI * 2;
+  }
+
+  return normalized;
+}
+
 export function verifyMilestone7Contracts(): THREE.Object3D {
   const forest = createForestExileHub();
+  const scene = new THREE.Scene();
+  const hubManager = createWorldHubManager(scene, {
+    enableHubDebugHotkeys: true,
+    showPrimitiveValidationScene: false,
+  });
+  const ayodhyaHub = hubManager.loadHub("ayodhya");
+  const forestHub = hubManager.loadHub("forestExile");
+  const returnedHub = hubManager.loadHub("ayodhya", {
+    spawnPosition: [11.2, 0, 4.6],
+    yaw: -Math.PI * 0.5,
+  });
   const floor = createForestFloorModule({ width: 8, depth: 8 });
   const tree = createDenseForestTreeModule({ scale: 1 });
   const rock = createForestRockModule();
@@ -206,10 +238,16 @@ export function verifyMilestone7Contracts(): THREE.Object3D {
     !forest.object.getObjectByName("lakshmana-forest-companion") ||
     forest.storyGates.length < 2 ||
     forest.sideQuests.length < 1 ||
-    forest.collision.length < 16
+    forest.collision.length < 16 ||
+    ayodhyaHub.id !== "ayodhya" ||
+    forestHub.id !== "forestExile" ||
+    returnedHub.id !== "ayodhya" ||
+    scene.children.length !== 1 ||
+    hubManager.active.player !== returnedHub.player
   ) {
     throw new Error("Milestone 7 contracts are incomplete.");
   }
 
+  hubManager.dispose();
   return forest.object;
 }

@@ -128,7 +128,11 @@ export function createFlatMaterial(
   });
 }
 
-export function createPaletteVectors(palette: RegionPalette): THREE.Vector3[] {
+export interface ShaderPaletteSource {
+  readonly shaderPalette: readonly string[];
+}
+
+export function createPaletteVectors(palette: ShaderPaletteSource): THREE.Vector3[] {
   return palette.shaderPalette.map((hex) => {
     const color = new THREE.Color(hex);
     return new THREE.Vector3(color.r, color.g, color.b);
