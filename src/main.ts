@@ -2,6 +2,7 @@ import "./styles.css";
 
 import { loadBootManifest } from "./assets/assetManager";
 import { createDebugFlags } from "./diagnostics/debugFlags";
+import { initPhysics } from "./physics/world";
 import { RendererApp } from "./render/app/RendererApp";
 import { getWebGL2SupportMessage, isWebGL2Available } from "./render/app/webglSupport";
 import { createAppShell } from "./ui/appShell";
@@ -22,6 +23,9 @@ if (!isWebGL2Available()) {
 
   shell.showTitle(async () => {
     shell.showLoading(0, "Preparing renderer");
+
+    shell.showLoading(0.2, "Loading physics");
+    await initPhysics();
 
     rendererApp = new RendererApp({
       host: appRoot,

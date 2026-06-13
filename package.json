@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.3",
     "three": "0.182.0"
   },
   "devDependencies": {
