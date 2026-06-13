@@ -41,8 +41,9 @@
 - [x] Walkable floor collision proxies are excluded from horizontal movement blockers.
 - [x] Minimal HUD shows health, objective, prompt, controller mode, and current speed.
 - [x] Vite config dedupes `three` resolution to address duplicate Three.js imports.
+- [x] Vite aliases `three` and `three/addons` to one runtime path to prevent duplicate Three.js instances.
+- [x] Local hand-written `three` module declarations were removed in favor of official Three typings.
 - [ ] Rapier collision backend is blocked until `@dimforge/rapier3d-compat` can be installed; npm registry lookup fails and the offline cache does not contain an installable package body.
-- [ ] Removing local Three.js type stubs is blocked until real declarations can be installed; `three@0.182.0` in this repo does not ship `.d.ts` files and `@types/three@0.182.0` is not installable from the current npm cache.
 
 ## Milestone 5: Ayodhya Vertical Slice
 
@@ -65,13 +66,17 @@
 
 - [x] Three-hit sword combo is mapped to left click / `J`.
 - [x] Each sword hit uses a distinct procedural swing slice and combo timing.
-- [x] Sword hit detection damages enemies through overlap checks.
+- [x] Sword hit detection damages enemies through overlap checks, including point-blank adjacent targets.
 - [x] Bow aim shows a crosshair and uses the existing aim camera zoom.
 - [x] Bow fire launches fast arrow projectiles that damage enemies on hit.
 - [x] Dodge creates a timed iFrame window and cooldown-gated roll movement.
 - [x] Enemies stagger on hit, have HP, and are removed from play at 0 HP.
-- [x] Lock-on cycles nearby enemies with `Q` and renders an indicator above the target.
+- [x] Enemy hit feedback reports Rama hits, enemy HP, and defeat.
+- [x] Lock-on cycles nearby enemies with `Q` and renders a visible indicator above the target.
+- [x] Combat HUD reports locked target name and HP.
 - [x] Lock-on subtly focuses the third-person camera toward the target.
+- [x] HUD mode reflects attack and dead states.
+- [x] Player defeat at 0 health locks control, shows a defeat message, and respawns Rama with restored health.
 - [x] Rakshasa and guard enemy types are placed with patrol, detect, chase, attack, and return states.
 - [x] Data-driven cutscene timelines define camera keyframes, subtitles, and trigger metadata.
 - [x] Cutscene camera rails interpolate smoothly between keyframes.

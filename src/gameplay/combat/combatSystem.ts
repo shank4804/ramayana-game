@@ -17,6 +17,7 @@ export interface CombatEnemy {
   id: string;
   type: EnemyType;
   object: THREE.Object3D;
+  hitFlash: THREE.Object3D;
   hp: number;
   maxHp: number;
   hitboxRadius: number;
@@ -24,6 +25,7 @@ export interface CombatEnemy {
   home: THREE.Vector3Tuple;
   patrolPhase: number;
   attackCooldown: number;
+  removeTimer: number;
   staggerTimer: number;
 }
 
@@ -43,6 +45,7 @@ export interface CombatState {
   invincibleTimer: number;
   lockedEnemyId: string | null;
   playerDamage: number;
+  actionMode: "ready" | "attack" | "aim" | "dodge";
   statusText: string;
 }
 
@@ -58,6 +61,7 @@ export interface CombatEncounter {
 const DETECT_RADIUS = 7.2;
 const LOCK_RADIUS = 9.5;
 const SWORD_REACH = 1.75;
+const POINT_BLANK_REACH = 0.95;
 const PROJECTILE_HIT_RADIUS = 0.42;
 
 export function createCombatEncounter(root = new THREE.Group()): CombatEncounter {
@@ -73,8 +77,12 @@ export function createCombatEncounter(root = new THREE.Group()): CombatEncounter
     invincibleTimer: 0,
     lockedEnemyId: null,
     playerDamage: 0,
+    actionMode: "ready",
     statusText: "Combat ready",
   };
+  let actionTimer = 0;
+  let eventText = "";
+  let eventTimer = 0;
   let previousAttack = false;
   let previousDodge = false;
   let previousLockOn = false;
@@ -97,6 +105,8 @@ export function createCombatEncounter(root = new THREE.Group()): CombatEncounter
       state.comboTimer = Math.max(0, state.comboTimer - deltaSeconds);
       state.dodgeCooldown = Math.max(0, state.dodgeCooldown - deltaSeconds);
       state.invincibleTimer = Math.max(0, state.invincibleTimer - deltaSeconds);
+      actionTimer = Math.max(0, actionTimer - deltaSeconds);
+      eventTimer = Math.max(0, eventTimer - deltaSeconds);
 
       if (state.comboTimer === 0) {
         state.comboStep = 0;
@@ -106,7 +116,10 @@ export function createCombatEncounter(root = new THREE.Group()): CombatEncounter
       if (input.dodge && !previousDodge && state.dodgeCooldown === 0) {
         state.invincibleTimer = 0.32;
         state.dodgeCooldown = 0.85;
-        state.statusText = "Dodge iFrames";
+        actionTimer = 0.32;
+        state.actionMode = "dodge";
+        eventText = "Rama dodged";
+        eventTimer = 0.8;
       }
 
       if (input.lockOn && !previousLockOn) {
@@ -116,18 +129,32 @@ export function createCombatEncounter(root = new THREE.Group()): CombatEncounter
       if (input.attack && !previousAttack) {
         if (input.aim) {
           fireArrow(root, projectiles, player);
-          state.statusText = "Arrow fired";
+          actionTimer = 0.25;
+          state.actionMode = "aim";
+          eventText = "Rama fired an arrow";
+          eventTimer = 0.9;
         } else {
-          swingSword(player, enemies, slash, state);
+          const result = swingSword(player, enemies, slash, state);
+          actionTimer = 0.32;
+          state.actionMode = "attack";
+          eventText = result;
+          eventTimer = 1.1;
         }
       }
 
-      updateProjectiles(projectiles, enemies, deltaSeconds);
-      updateEnemies(enemies, player, deltaSeconds, state);
+      const projectileEvent = updateProjectiles(projectiles, enemies, deltaSeconds);
+      const enemyEvent = updateEnemies(enemies, player, deltaSeconds, state);
+      if (projectileEvent || enemyEvent) {
+        eventText = projectileEvent || enemyEvent;
+        eventTimer = 1.1;
+      }
       if (state.lockedEnemyId && !enemies.some((enemy) => enemy.id === state.lockedEnemyId && enemy.state !== "dead")) {
         state.lockedEnemyId = null;
       }
       updateLockIndicators(enemies, state.lockedEnemyId);
+      state.crosshair = input.aim;
+      state.actionMode = input.aim ? "aim" : actionTimer > 0 ? state.actionMode : "ready";
+      state.statusText = formatCombatStatus(enemies, state.lockedEnemyId, eventTimer > 0 ? eventText : "");
 
       previousAttack = input.attack;
       previousDodge = input.dodge;
@@ -164,11 +191,17 @@ function createEnemy(id: string, type: EnemyType, home: THREE.Vector3Tuple): Com
   indicator.rotation.x = Math.PI * 0.5;
   indicator.scale.set(0.001, 0.001, 0.001);
   character.add(indicator);
+  const hitFlash = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), createFlatMaterial("saffron.base"));
+  hitFlash.name = `${id}-hit-flash`;
+  hitFlash.position.set(0, type === "rakshasa" ? 2.45 : 2.18, 0);
+  hitFlash.scale.set(0.001, 0.001, 0.001);
+  character.add(hitFlash);
 
   return {
     id,
     type,
     object: character,
+    hitFlash,
     hp: type === "rakshasa" ? 90 : 48,
     maxHp: type === "rakshasa" ? 90 : 48,
     hitboxRadius: type === "rakshasa" ? 0.72 : 0.55,
@@ -176,6 +209,7 @@ function createEnemy(id: string, type: EnemyType, home: THREE.Vector3Tuple): Com
     home,
     patrolPhase: type === "rakshasa" ? Math.PI : 0,
     attackCooldown: 0,
+    removeTimer: 0,
     staggerTimer: 0,
   };
 }
@@ -186,13 +220,12 @@ function createSlashObject(): THREE.Object3D {
   return slash;
 }
 
-function swingSword(player: THREE.Object3D, enemies: CombatEnemy[], slash: THREE.Object3D, state: CombatState): void {
+function swingSword(player: THREE.Object3D, enemies: CombatEnemy[], slash: THREE.Object3D, state: CombatState): string {
   const step = state.comboStep === 0 ? 1 : ((state.comboStep % 3) + 1) as 1 | 2 | 3;
   const damage = step === 3 ? 28 : step === 2 ? 20 : 16;
   const pause = step === 3 ? 0.62 : 0.34;
   state.comboStep = step;
   state.comboTimer = pause;
-  state.statusText = `Sword combo ${step}`;
 
   const forwardX = Math.sin(player.rotation.y);
   const forwardZ = Math.cos(player.rotation.y);
@@ -209,11 +242,17 @@ function swingSword(player: THREE.Object3D, enemies: CombatEnemy[], slash: THREE
     const dz = enemy.object.position.z - player.position.z;
     const distance = Math.hypot(dx, dz);
     const facing = distance === 0 ? 1 : (dx * forwardX + dz * forwardZ) / distance;
+    const pointBlank = distance <= POINT_BLANK_REACH + enemy.hitboxRadius;
 
-    if (distance <= SWORD_REACH + enemy.hitboxRadius && facing > -0.2) {
+    if (distance <= SWORD_REACH + enemy.hitboxRadius && (facing > -0.2 || pointBlank)) {
       damageEnemy(enemy, damage, forwardX, forwardZ);
+      return enemy.hp === 0
+        ? `Rama defeated ${formatEnemyName(enemy)}`
+        : `Rama hit ${formatEnemyName(enemy)} (${enemy.hp}/${enemy.maxHp})`;
     }
   }
+
+  return `Sword combo ${step}`;
 }
 
 function fireArrow(root: THREE.Group, projectiles: CombatProjectile[], player: THREE.Object3D): void {
@@ -234,7 +273,9 @@ function fireArrow(root: THREE.Group, projectiles: CombatProjectile[], player: T
   });
 }
 
-function updateProjectiles(projectiles: CombatProjectile[], enemies: CombatEnemy[], deltaSeconds: number): void {
+function updateProjectiles(projectiles: CombatProjectile[], enemies: CombatEnemy[], deltaSeconds: number): string {
+  let hitEvent = "";
+
   for (const projectile of projectiles) {
     if (!projectile.active) {
       continue;
@@ -254,6 +295,9 @@ function updateProjectiles(projectiles: CombatProjectile[], enemies: CombatEnemy
 
       if (distance2D(projectile.object, enemy.object) <= enemy.hitboxRadius + PROJECTILE_HIT_RADIUS) {
         damageEnemy(enemy, 34, projectile.direction[0], projectile.direction[2]);
+        hitEvent = enemy.hp === 0
+          ? `Rama defeated ${formatEnemyName(enemy)}`
+          : `Rama hit ${formatEnemyName(enemy)} (${enemy.hp}/${enemy.maxHp})`;
         projectile.active = false;
         projectile.object.scale.set(0.001, 0.001, 0.001);
         break;
@@ -265,17 +309,25 @@ function updateProjectiles(projectiles: CombatProjectile[], enemies: CombatEnemy
       projectile.object.scale.set(0.001, 0.001, 0.001);
     }
   }
+
+  return hitEvent;
 }
 
-function updateEnemies(enemies: CombatEnemy[], player: THREE.Object3D, deltaSeconds: number, state: CombatState): void {
+function updateEnemies(enemies: CombatEnemy[], player: THREE.Object3D, deltaSeconds: number, state: CombatState): string {
+  let attackEvent = "";
+
   for (const enemy of enemies) {
     if (enemy.state === "dead") {
-      enemy.object.scale.set(0.001, 0.001, 0.001);
+      enemy.removeTimer = Math.max(0, enemy.removeTimer - deltaSeconds);
+      if (enemy.removeTimer === 0 && enemy.object.parent) {
+        enemy.object.parent.remove(enemy.object);
+      }
       continue;
     }
 
     enemy.attackCooldown = Math.max(0, enemy.attackCooldown - deltaSeconds);
     enemy.staggerTimer = Math.max(0, enemy.staggerTimer - deltaSeconds);
+    enemy.hitFlash.scale.setScalar(enemy.staggerTimer > 0 ? 1 : 0.001);
 
     if (enemy.staggerTimer > 0) {
       enemy.state = "detect";
@@ -288,7 +340,7 @@ function updateEnemies(enemies: CombatEnemy[], player: THREE.Object3D, deltaSeco
       enemy.state = "attack";
       if (enemy.attackCooldown === 0 && state.invincibleTimer === 0) {
         state.playerDamage += enemy.type === "rakshasa" ? 16 : 9;
-        state.statusText = `${enemy.type} hit Rama`;
+        attackEvent = `${formatEnemyName(enemy)} hit Rama`;
         enemy.attackCooldown = enemy.type === "rakshasa" ? 1.25 : 0.82;
       }
       continue;
@@ -310,15 +362,19 @@ function updateEnemies(enemies: CombatEnemy[], player: THREE.Object3D, deltaSeco
       enemy.object.position.set(enemy.home[0] + Math.sin(enemy.patrolPhase) * 0.72, enemy.home[1], enemy.home[2]);
     }
   }
+
+  return attackEvent;
 }
 
 function damageEnemy(enemy: CombatEnemy, damage: number, impulseX: number, impulseZ: number): void {
   enemy.hp = Math.max(0, enemy.hp - damage);
   enemy.staggerTimer = enemy.hp === 0 ? 0 : 0.22;
+  enemy.hitFlash.scale.setScalar(enemy.hp === 0 ? 0.001 : 1.25);
   enemy.object.position.set(enemy.object.position.x + impulseX * 0.22, enemy.object.position.y, enemy.object.position.z + impulseZ * 0.22);
 
   if (enemy.hp === 0) {
     enemy.state = "dead";
+    enemy.removeTimer = 0.45;
   }
 }
 
@@ -335,8 +391,20 @@ function cycleLockTarget(enemies: CombatEnemy[], player: THREE.Object3D, current
 function updateLockIndicators(enemies: CombatEnemy[], lockedId: string | null): void {
   for (const enemy of enemies) {
     const indicator = enemy.object.getObjectByName(`${enemy.id}-lock-indicator`);
-    indicator?.scale.set(enemy.id === lockedId && enemy.state !== "dead" ? 1 : 0.001, enemy.id === lockedId ? 1 : 0.001, enemy.id === lockedId ? 1 : 0.001);
+    const visibleScale = enemy.id === lockedId && enemy.state !== "dead" ? 1.85 : 0.001;
+    indicator?.scale.set(visibleScale, visibleScale, visibleScale);
   }
+}
+
+function formatCombatStatus(enemies: CombatEnemy[], lockedId: string | null, eventText: string): string {
+  const locked = enemies.find((enemy) => enemy.id === lockedId && enemy.state !== "dead");
+  const lockText = locked ? `Locked: ${formatEnemyName(locked)} ${locked.hp}/${locked.maxHp}` : "No lock";
+
+  return eventText ? `${eventText} - ${lockText}` : lockText;
+}
+
+function formatEnemyName(enemy: CombatEnemy): string {
+  return enemy.type === "rakshasa" ? "rakshasa" : "guard";
 }
 
 function moveToward(object: THREE.Object3D, targetX: number, targetZ: number, speed: number, deltaSeconds: number): void {

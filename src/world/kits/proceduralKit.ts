@@ -390,7 +390,7 @@ export function createShrubModule(options: NatureModuleOptions = {}): KitModule 
   };
 }
 
-function createLampProp(material = createFlatMaterial("gold.base", { metalness: 0.08 })): KitModule {
+function createLampProp(material: THREE.Material = createFlatMaterial("gold.base", { metalness: 0.08 })): KitModule {
   const lamp = new THREE.Group();
   lamp.name = "kit-prop-lamp";
 
@@ -423,7 +423,7 @@ function createLampProp(material = createFlatMaterial("gold.base", { metalness: 
   };
 }
 
-function createPlanterProp(material = createFlatMaterial("earth.base")): KitModule {
+function createPlanterProp(material: THREE.Material = createFlatMaterial("earth.base")): KitModule {
   const planter = new THREE.Group();
   planter.name = "kit-prop-planter";
 
@@ -456,7 +456,7 @@ function markShadowed(object: THREE.Object3D): void {
   });
 }
 
-function createCrateProp(material = createFlatMaterial("earth.base")): KitModule {
+function createCrateProp(material: THREE.Material = createFlatMaterial("earth.base")): KitModule {
   const crate = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.5, 0.72), material);
   crate.name = "kit-prop-crate";
   crate.position.y = 0.25;
@@ -476,7 +476,7 @@ function createCrateProp(material = createFlatMaterial("earth.base")): KitModule
   };
 }
 
-function createMarketStallProp(material = createFlatMaterial("earth.base")): KitModule {
+function createMarketStallProp(material: THREE.Material = createFlatMaterial("earth.base")): KitModule {
   const stall = new THREE.Group();
   stall.name = "kit-prop-market-stall";
 
@@ -508,7 +508,7 @@ function createMarketStallProp(material = createFlatMaterial("earth.base")): Kit
   };
 }
 
-function createBenchProp(material = createFlatMaterial("earth.base")): KitModule {
+function createBenchProp(material: THREE.Material = createFlatMaterial("earth.base")): KitModule {
   const bench = new THREE.Group();
   bench.name = "kit-prop-bench";
 

@@ -38,8 +38,10 @@ export class RendererApp {
   private readonly sliceDirector: AyodhyaSliceDirector;
   private readonly validationMesh: THREE.Object3D | null;
   private courtCutsceneStarted = false;
+  private defeatTimer = 0;
   private disposed = false;
   private lastFrameTime = 0;
+  private readonly spawnPosition = new THREE.Vector3();
 
   public constructor({ host, debugFlags }: RendererAppOptions) {
     this.renderer = createRenderer();
@@ -48,6 +50,7 @@ export class RendererApp {
     this.scene = sceneSetup.scene;
     this.validationMesh = sceneSetup.validationMesh;
     this.player = sceneSetup.player;
+    this.spawnPosition.copy(this.player.position);
     this.cameraRig = createThirdPersonCameraRig(this.camera, sceneSetup.collision);
     this.inputMapper = createInputMapper(window);
     this.combat = createCombatEncounter();
@@ -118,7 +121,8 @@ export class RendererApp {
     const cutsceneView = this.cutscene.update(deltaSeconds, {
       skip: input.cancel || input.interact,
     });
-    const controlLocked = !sliceView.allowPlayerControl || cutsceneView.active;
+    const defeated = this.defeatTimer > 0 || this.controller.state.health <= 0;
+    const controlLocked = !sliceView.allowPlayerControl || cutsceneView.active || defeated;
     const combatState = controlLocked
       ? this.combat.state
       : this.combat.update(deltaSeconds, this.player, {
@@ -135,6 +139,21 @@ export class RendererApp {
     }
 
     this.controller.state.health = Math.max(0, this.controller.state.health - combatState.playerDamage);
+    if (this.controller.state.health <= 0 && this.defeatTimer === 0) {
+      this.defeatTimer = 2.1;
+    }
+
+    let defeatMessage = "";
+    if (this.defeatTimer > 0) {
+      this.defeatTimer = Math.max(0, this.defeatTimer - deltaSeconds);
+      defeatMessage = "Rama falls - returning to the palace street";
+      if (this.defeatTimer === 0) {
+        this.player.position.copy(this.spawnPosition);
+        this.player.rotation.y = Math.PI;
+        this.controller.state.health = 100;
+        defeatMessage = "Rama recovers at the palace street";
+      }
+    }
     this.audio.update(deltaSeconds, {
       cue: sliceView.audioCue,
       moving: this.controller.state.speed > 0.15,
@@ -142,10 +161,10 @@ export class RendererApp {
     });
     this.hud.update({
       health: this.controller.state.health,
-      mode: this.controller.state.mode,
+      mode: this.controller.state.health <= 0 || this.defeatTimer > 0 ? "dead" : combatState.actionMode === "attack" ? "attack" : this.controller.state.mode,
       combatStatus: combatState.statusText,
       crosshair: combatState.crosshair,
-      notification: sliceView.notification,
+      notification: defeatMessage || sliceView.notification,
       objective: sliceView.objective,
       prompt: sliceView.prompt,
       speed: this.controller.state.speed,
