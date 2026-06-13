@@ -43,7 +43,7 @@ export class RendererApp {
     this.scene = sceneSetup.scene;
     this.validationMesh = sceneSetup.validationMesh;
     this.player = sceneSetup.player;
-    this.cameraRig = createThirdPersonCameraRig(this.camera);
+    this.cameraRig = createThirdPersonCameraRig(this.camera, sceneSetup.collision);
     this.inputMapper = createInputMapper(window);
     this.controller = createRamaController({
       actor: sceneSetup.player,

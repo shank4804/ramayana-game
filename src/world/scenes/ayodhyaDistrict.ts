@@ -43,6 +43,7 @@ export function createAyodhyaDistrict(): AyodhyaDistrictScene {
   addModule(district, collision, createFloorModule({ width: 34, depth: 28, material: createFlatMaterial("sandstone.light") }));
   addPalaceQuarter(district, collision);
   addCityWallsAndGates(district, collision);
+  addContainmentCollision(collision);
   addStreetGrid(district, collision);
   addMarket(district, collision);
   addFoliageAndAmbientLife(district, collision);
@@ -99,11 +100,57 @@ function addCityWallsAndGates(district: THREE.Group, collision: CollisionProxy[]
   eastGate.object.position.set(13.2, 0, 4.6);
   eastGate.object.rotation.y = Math.PI * 0.5;
   addModule(district, collision, eastGate);
+  collision.push({
+    id: "story-gate-east-solid-blocker",
+    shape: "box",
+    position: [13.55, 1.1, 4.6],
+    size: [0.86, 2.2, 3.2],
+  });
 
   const westGate = createGateModule({ width: 2.6, height: 2.8, depth: 0.62, material: wallMaterial });
   westGate.object.position.set(-13.2, 0, -1.6);
   westGate.object.rotation.y = Math.PI * 0.5;
   addModule(district, collision, westGate);
+  collision.push({
+    id: "story-gate-west-solid-blocker",
+    shape: "box",
+    position: [-13.55, 1.1, -1.6],
+    size: [0.86, 2.2, 3.2],
+  });
+}
+
+function addContainmentCollision(collision: CollisionProxy[]): void {
+  const halfWidth = 16.7;
+  const halfDepth = 13.7;
+  const thickness = 0.78;
+  const height = 2.8;
+
+  collision.push(
+    {
+      id: "district-boundary-east",
+      shape: "box",
+      position: [halfWidth, height * 0.5, 0],
+      size: [thickness, height, halfDepth * 2],
+    },
+    {
+      id: "district-boundary-west",
+      shape: "box",
+      position: [-halfWidth, height * 0.5, 0],
+      size: [thickness, height, halfDepth * 2],
+    },
+    {
+      id: "district-boundary-north",
+      shape: "box",
+      position: [0, height * 0.5, halfDepth],
+      size: [halfWidth * 2, height, thickness],
+    },
+    {
+      id: "district-boundary-south",
+      shape: "box",
+      position: [0, height * 0.5, -halfDepth],
+      size: [halfWidth * 2, height, thickness],
+    },
+  );
 }
 
 function addStreetGrid(district: THREE.Group, collision: CollisionProxy[]): void {
@@ -227,7 +274,7 @@ function addPlayer(district: THREE.Group): THREE.Object3D {
     skinSwap: AYODHYA_PALETTE.skin.hero,
   });
 
-  rama.object.position.set(0, 0, -3.6);
+  rama.object.position.set(0, 0, 1.6);
   rama.object.rotation.y = Math.PI;
   district.add(rama.object);
   return rama.object;

@@ -54,5 +54,9 @@
 - [x] One main quest is implemented for Dasharatha's blessing.
 - [x] One side quest is implemented for lighting the market lamps.
 - [x] Story gates keep the player inside Ayodhya with visible city gate/guard framing.
+- [x] Story gates have solid collision blockers while still surfacing E-interaction prompts.
+- [x] District perimeter has containment collision to prevent edge leaks into the void.
+- [x] Post-prologue spawn and initial camera framing show Rama from a clean readable street view.
+- [x] Third-person camera resolves against collision proxies before settling behind Rama.
 - [x] Minimal quest/interact prompts are surfaced through the HUD.
 - [x] First audio pass includes procedural ambience, footstep ticks, UI feedback, and a music bed after first user interaction.
