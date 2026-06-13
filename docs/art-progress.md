@@ -83,3 +83,15 @@
 - [x] Subtitles render through the DOM HUD overlay.
 - [x] `E` or `Escape` skips an active cutscene.
 - [x] Cutscenes cleanly restore normal player control, HUD, and camera updates.
+
+## Milestone 7: Kanda Expansion
+
+- [x] Forest Exile has a distinct cooler green palette module.
+- [x] Forest Exile procedural kit exports floor, dense tree, rock/cliff, hermitage hut, campfire, and path marker modules.
+- [x] Forest Exile hub scene places hermitage camp, river plane, forest ring, path markers, Rama, and Lakshmana.
+- [x] Forest Exile hub emits collision for floor, trees, rocks, hut, campfire, and containment boundaries.
+- [x] Forest Exile defines story-gated paths for Ayodhya return and deeper forest progression.
+- [x] Forest Exile defines a first side quest hook for gathering firewood.
+- [ ] Kishkindha hub kit and palette are not started.
+- [ ] Lanka hub kit and palette are not started.
+- [ ] Hanuman playable traversal profile is deferred until Kishkindha.

@@ -11,9 +11,18 @@ import { createRamaController, type RamaControllerInput } from "./gameplay/contr
 import { createInputMapper } from "./gameplay/input/inputMapper";
 import { createAyodhyaCourtyard } from "./world/scenes/ayodhyaCourtyard";
 import { createAyodhyaDistrict } from "./world/scenes/ayodhyaDistrict";
+import { createForestExileHub } from "./world/scenes/forestExile";
 import { createCollisionWorld } from "./physics/world";
 import { createAyodhyaSliceDirector } from "./simulation/ayodhyaSlice";
 import { createGameplayHud } from "./ui/gameplayHud";
+import { FOREST_EXILE_PALETTE } from "./render/forestPalette";
+import {
+  createCampfireModule,
+  createDenseForestTreeModule,
+  createForestFloorModule,
+  createForestRockModule,
+  createHermitageHutModule,
+} from "./world/kits/forestKit";
 import { createFloorModule, createPalaceFacadeModule, createPropModule, createRampModule, createStairsModule, createWallModule } from "./world/kits/proceduralKit";
 
 export function verifyMilestone2Contracts(
@@ -175,4 +184,32 @@ export function verifyMilestone6Contracts(camera: THREE.PerspectiveCamera): THRE
   }
 
   return root;
+}
+
+export function verifyMilestone7Contracts(): THREE.Object3D {
+  const forest = createForestExileHub();
+  const floor = createForestFloorModule({ width: 8, depth: 8 });
+  const tree = createDenseForestTreeModule({ scale: 1 });
+  const rock = createForestRockModule();
+  const hut = createHermitageHutModule();
+  const campfire = createCampfireModule();
+  const hasExilePalette = FOREST_EXILE_PALETTE.id === "forest-exile" && FOREST_EXILE_PALETTE.shaderPalette.length >= 8;
+
+  if (
+    !hasExilePalette ||
+    !floor.collision.every((proxy) => proxy.blocksMovement === false) ||
+    !tree.collision.length ||
+    !rock.collision.length ||
+    !hut.collision.length ||
+    !campfire.collision.length ||
+    !forest.object.getObjectByName("forest-hermitage-hut") ||
+    !forest.object.getObjectByName("lakshmana-forest-companion") ||
+    forest.storyGates.length < 2 ||
+    forest.sideQuests.length < 1 ||
+    forest.collision.length < 16
+  ) {
+    throw new Error("Milestone 7 contracts are incomplete.");
+  }
+
+  return forest.object;
 }
