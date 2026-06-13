@@ -13,6 +13,7 @@ export interface ThirdPersonCameraState {
 
 export interface ThirdPersonCameraRig {
   readonly state: ThirdPersonCameraState;
+  setFocusTarget(target: THREE.Object3D | null): void;
   update(target: THREE.Object3D, input: PlayerInputSnapshot, deltaSeconds: number): void;
 }
 
@@ -27,12 +28,22 @@ export function createThirdPersonCameraRig(
     distance: 4.8,
     shoulderAim: false,
   };
+  let focusTarget: THREE.Object3D | null = null;
 
   return {
     state,
+    setFocusTarget(target) {
+      focusTarget = target;
+    },
     update(target, input, deltaSeconds) {
       state.target = target;
       state.yaw += input.cameraYawDelta;
+      if (focusTarget) {
+        const dx = focusTarget.position.x - target.position.x;
+        const dz = focusTarget.position.z - target.position.z;
+        const desiredYaw = Math.atan2(dx, dz);
+        state.yaw += angleDelta(state.yaw, desiredYaw) * Math.min(1, deltaSeconds * 3.6);
+      }
       state.pitch = Math.max(-0.72, Math.min(0.34, state.pitch + input.cameraPitchDelta));
       state.shoulderAim = input.aim;
 
@@ -58,6 +69,20 @@ export function createThirdPersonCameraRig(
       camera.lookAt(targetX, targetY, targetZ);
     },
   };
+}
+
+function angleDelta(current: number, target: number): number {
+  let delta = target - current;
+
+  while (delta > Math.PI) {
+    delta -= Math.PI * 2;
+  }
+
+  while (delta < -Math.PI) {
+    delta += Math.PI * 2;
+  }
+
+  return delta;
 }
 
 interface CameraPoint {

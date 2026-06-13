@@ -4,7 +4,9 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { createFlatMaterial, AYODHYA_PALETTE } from "./render/palette";
 import { createPixelationPass, createPostPipeline } from "./render/post/postPipeline";
 import { createRamaStandInCharacter } from "./assets/characters/ramaStandIn";
+import { createCutscenePlayer, DASHARATHA_COURT_CUTSCENE } from "./cinematics/timeline";
 import { createThirdPersonCameraRig } from "./gameplay/camera/thirdPersonCamera";
+import { createCombatEncounter } from "./gameplay/combat/combatSystem";
 import { createRamaController, type RamaControllerInput } from "./gameplay/controller/ramaController";
 import { createInputMapper } from "./gameplay/input/inputMapper";
 import { createAyodhyaCourtyard } from "./world/scenes/ayodhyaCourtyard";
@@ -108,6 +110,9 @@ export function verifyMilestone5Contracts(): THREE.Object3D {
     dodge: false,
     interact: false,
     aim: false,
+    attack: false,
+    lockOn: false,
+    cancel: false,
   };
 
   const prologueView = director.update(1 / 60, idleInput, district.player.position);
@@ -134,4 +139,40 @@ export function verifyMilestone5Contracts(): THREE.Object3D {
   }
 
   return district.object;
+}
+
+export function verifyMilestone6Contracts(camera: THREE.PerspectiveCamera): THREE.Object3D {
+  const root = new THREE.Group();
+  const player = createRamaStandInCharacter({
+    primarySwap: AYODHYA_PALETTE.saffron.base,
+    secondarySwap: AYODHYA_PALETTE.gold.base,
+  }).object;
+  const combat = createCombatEncounter(root);
+  const cutscene = createCutscenePlayer(camera);
+  const firstEnemy = combat.enemies[0];
+
+  if (!firstEnemy) {
+    throw new Error("Milestone 6 contracts are incomplete.");
+  }
+
+  firstEnemy.object.position.set(0, 0, 1.15);
+  combat.update(1 / 60, player, { attack: true, aim: false, dodge: false, lockOn: false });
+  combat.update(1 / 60, player, { attack: false, aim: false, dodge: true, lockOn: true });
+  cutscene.start(DASHARATHA_COURT_CUTSCENE);
+  const cutsceneView = cutscene.update(1, { skip: false });
+  cutscene.update(0.1, { skip: true });
+
+  if (
+    !root.getObjectByName("guard-01") ||
+    !root.getObjectByName("rakshasa-01") ||
+    firstEnemy.hp >= firstEnemy.maxHp ||
+    combat.state.invincibleTimer <= 0 ||
+    !combat.state.lockedEnemyId ||
+    !cutsceneView.subtitle ||
+    cutscene.state.active
+  ) {
+    throw new Error("Milestone 6 contracts are incomplete.");
+  }
+
+  return root;
 }

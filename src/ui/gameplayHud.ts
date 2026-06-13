@@ -5,6 +5,9 @@ export interface GameplayHudState {
   objective: string;
   prompt: string;
   speed: number;
+  combatStatus?: string;
+  crosshair?: boolean;
+  subtitle?: string;
 }
 
 export interface GameplayHud {
@@ -30,7 +33,19 @@ export function createGameplayHud(): GameplayHud {
   notification.className = "hud-notification";
   notification.hidden = true;
 
-  element.append(health, objective, prompt, notification);
+  const combat = document.createElement("div");
+  combat.className = "hud-combat";
+
+  const crosshair = document.createElement("div");
+  crosshair.className = "hud-crosshair";
+  crosshair.textContent = "+";
+  crosshair.hidden = true;
+
+  const subtitle = document.createElement("div");
+  subtitle.className = "hud-subtitle";
+  subtitle.hidden = true;
+
+  element.append(health, objective, prompt, notification, combat, crosshair, subtitle);
 
   return {
     element,
@@ -40,6 +55,11 @@ export function createGameplayHud(): GameplayHud {
       prompt.textContent = `${state.prompt} - ${state.mode} - ${state.speed.toFixed(1)} m/s`;
       notification.textContent = state.notification ?? "";
       notification.hidden = !state.notification;
+      combat.textContent = state.combatStatus ?? "";
+      combat.hidden = !state.combatStatus;
+      crosshair.hidden = !state.crosshair;
+      subtitle.textContent = state.subtitle ?? "";
+      subtitle.hidden = !state.subtitle;
     },
   };
 }

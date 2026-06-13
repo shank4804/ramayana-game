@@ -1,8 +1,10 @@
 import * as THREE from "three";
 
 import { createAyodhyaAudioPass, type AyodhyaAudioPass } from "../../audio/ayodhyaAudio";
+import { createCutscenePlayer, DASHARATHA_COURT_CUTSCENE, type CutscenePlayer } from "../../cinematics/timeline";
 import type { DebugFlags } from "../../diagnostics/debugFlags";
 import { createThirdPersonCameraRig, type ThirdPersonCameraRig } from "../../gameplay/camera/thirdPersonCamera";
+import { createCombatEncounter, type CombatEncounter } from "../../gameplay/combat/combatSystem";
 import { createRamaController, type RamaController } from "../../gameplay/controller/ramaController";
 import { createInputMapper, type InputMapper, type PlayerInputSnapshot } from "../../gameplay/input/inputMapper";
 import { createCollisionWorld } from "../../physics/world";
@@ -23,8 +25,10 @@ export class RendererApp {
   private readonly audio: AyodhyaAudioPass;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly cameraRig: ThirdPersonCameraRig;
+  private readonly combat: CombatEncounter;
   private readonly composer: PixelatedEffectComposer;
   private readonly controller: RamaController;
+  private readonly cutscene: CutscenePlayer;
   private readonly graphicsSettings: HTMLElement;
   private readonly hud: GameplayHud;
   private readonly inputMapper: InputMapper;
@@ -33,6 +37,7 @@ export class RendererApp {
   private readonly scene: THREE.Scene;
   private readonly sliceDirector: AyodhyaSliceDirector;
   private readonly validationMesh: THREE.Object3D | null;
+  private courtCutsceneStarted = false;
   private disposed = false;
   private lastFrameTime = 0;
 
@@ -45,12 +50,15 @@ export class RendererApp {
     this.player = sceneSetup.player;
     this.cameraRig = createThirdPersonCameraRig(this.camera, sceneSetup.collision);
     this.inputMapper = createInputMapper(window);
+    this.combat = createCombatEncounter();
+    this.scene.add(this.combat.root);
     this.controller = createRamaController({
       actor: sceneSetup.player,
       collisionWorld: createCollisionWorld(sceneSetup.collision),
       cameraRig: this.cameraRig,
     });
     this.sliceDirector = createAyodhyaSliceDirector(sceneSetup.interactions);
+    this.cutscene = createCutscenePlayer(this.camera);
     this.audio = createAyodhyaAudioPass(window);
     this.hud = createGameplayHud();
     this.composer = createPostPipeline(this.renderer, this.scene, this.camera, {
@@ -102,9 +110,31 @@ export class RendererApp {
     this.lastFrameTime = time;
     const input = this.inputMapper.getInputSnapshot();
     const sliceView = this.sliceDirector.update(deltaSeconds, input, this.player.position);
-    const gameplayInput = sliceView.allowPlayerControl ? input : createControlLockedInput(input);
+    if (sliceView.allowPlayerControl && !this.courtCutsceneStarted && !input.interact) {
+      this.cutscene.start(DASHARATHA_COURT_CUTSCENE);
+      this.courtCutsceneStarted = true;
+    }
 
-    this.controller.update(deltaSeconds, gameplayInput);
+    const cutsceneView = this.cutscene.update(deltaSeconds, {
+      skip: input.cancel || input.interact,
+    });
+    const controlLocked = !sliceView.allowPlayerControl || cutsceneView.active;
+    const combatState = controlLocked
+      ? this.combat.state
+      : this.combat.update(deltaSeconds, this.player, {
+          aim: input.aim,
+          attack: input.attack,
+          dodge: input.dodge,
+          lockOn: input.lockOn,
+        });
+    const gameplayInput = controlLocked ? createControlLockedInput(input) : { ...input, dodge: input.dodge && combatState.invincibleTimer > 0 };
+
+    if (!cutsceneView.active) {
+      this.cameraRig.setFocusTarget(this.combat.getLockedTarget());
+      this.controller.update(deltaSeconds, gameplayInput);
+    }
+
+    this.controller.state.health = Math.max(0, this.controller.state.health - combatState.playerDamage);
     this.audio.update(deltaSeconds, {
       cue: sliceView.audioCue,
       moving: this.controller.state.speed > 0.15,
@@ -113,10 +143,13 @@ export class RendererApp {
     this.hud.update({
       health: this.controller.state.health,
       mode: this.controller.state.mode,
+      combatStatus: combatState.statusText,
+      crosshair: combatState.crosshair,
       notification: sliceView.notification,
       objective: sliceView.objective,
       prompt: sliceView.prompt,
       speed: this.controller.state.speed,
+      subtitle: cutsceneView.subtitle,
     });
 
     if (this.validationMesh) {
@@ -135,6 +168,8 @@ function createControlLockedInput(input: PlayerInputSnapshot): PlayerInputSnapsh
     sprint: false,
     dodge: false,
     aim: false,
+    attack: false,
+    lockOn: false,
   };
 }
 

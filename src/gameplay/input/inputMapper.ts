@@ -7,6 +7,9 @@ export interface PlayerInputSnapshot {
   dodge: boolean;
   interact: boolean;
   aim: boolean;
+  attack: boolean;
+  lockOn: boolean;
+  cancel: boolean;
 }
 
 export interface InputMapper {
@@ -16,6 +19,7 @@ export interface InputMapper {
 
 export function createInputMapper(targetWindow: Window): InputMapper {
   const pressedKeys = new Set<string>();
+  let leftMouseDown = false;
   let rightMouseDown = false;
   let cameraYawDelta = 0;
   let cameraPitchDelta = 0;
@@ -33,11 +37,19 @@ export function createInputMapper(targetWindow: Window): InputMapper {
     }
   };
   const handleMouseDown = (event: MouseEvent): void => {
+    if (event.button === 0) {
+      leftMouseDown = true;
+    }
+
     if (event.button === 2) {
       rightMouseDown = true;
     }
   };
   const handleMouseUp = (event: MouseEvent): void => {
+    if (event.button === 0) {
+      leftMouseDown = false;
+    }
+
     if (event.button === 2) {
       rightMouseDown = false;
     }
@@ -72,6 +84,9 @@ export function createInputMapper(targetWindow: Window): InputMapper {
         dodge: pressedKeys.has("Space") || Boolean(gamepad?.buttons[1]?.pressed),
         interact: pressedKeys.has("KeyE") || Boolean(gamepad?.buttons[0]?.pressed),
         aim: rightMouseDown || Boolean(gamepad?.buttons[6]?.pressed),
+        attack: leftMouseDown || pressedKeys.has("KeyJ") || Boolean(gamepad?.buttons[7]?.pressed),
+        lockOn: pressedKeys.has("KeyQ") || Boolean(gamepad?.buttons[9]?.pressed),
+        cancel: pressedKeys.has("Escape") || Boolean(gamepad?.buttons[8]?.pressed),
       };
 
       cameraYawDelta = 0;

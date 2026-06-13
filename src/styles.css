@@ -68,7 +68,8 @@ canvas {
 .hud-health,
 .hud-objective,
 .hud-prompt,
-.hud-notification {
+.hud-notification,
+.hud-combat {
   width: fit-content;
   max-width: 100%;
   padding: 8px 10px;
@@ -97,6 +98,45 @@ canvas {
   border-color: rgb(216 173 69 / 44%);
   background: rgb(70 43 23 / 78%);
   font-weight: 700;
+}
+
+.hud-combat {
+  color: #f3ddb6;
+  border-color: rgb(220 111 45 / 44%);
+  background: rgb(27 20 14 / 68%);
+  font-weight: 700;
+}
+
+.hud-crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  color: #fff8eb;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 28px;
+  text-align: center;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 80%);
+}
+
+.hud-subtitle {
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  width: min(680px, calc(100vw - 48px));
+  transform: translateX(-50%);
+  padding: 10px 14px;
+  border: 1px solid rgb(243 221 182 / 34%);
+  border-radius: 6px;
+  background: rgb(12 10 8 / 76%);
+  color: #fff8eb;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .screen-layer {

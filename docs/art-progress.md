@@ -60,3 +60,21 @@
 - [x] Third-person camera resolves against collision proxies before settling behind Rama.
 - [x] Minimal quest/interact prompts are surfaced through the HUD.
 - [x] First audio pass includes procedural ambience, footstep ticks, UI feedback, and a music bed after first user interaction.
+
+## Milestone 6: Combat And Cinematics
+
+- [x] Three-hit sword combo is mapped to left click / `J`.
+- [x] Each sword hit uses a distinct procedural swing slice and combo timing.
+- [x] Sword hit detection damages enemies through overlap checks.
+- [x] Bow aim shows a crosshair and uses the existing aim camera zoom.
+- [x] Bow fire launches fast arrow projectiles that damage enemies on hit.
+- [x] Dodge creates a timed iFrame window and cooldown-gated roll movement.
+- [x] Enemies stagger on hit, have HP, and are removed from play at 0 HP.
+- [x] Lock-on cycles nearby enemies with `Q` and renders an indicator above the target.
+- [x] Lock-on subtly focuses the third-person camera toward the target.
+- [x] Rakshasa and guard enemy types are placed with patrol, detect, chase, attack, and return states.
+- [x] Data-driven cutscene timelines define camera keyframes, subtitles, and trigger metadata.
+- [x] Cutscene camera rails interpolate smoothly between keyframes.
+- [x] Subtitles render through the DOM HUD overlay.
+- [x] `E` or `Escape` skips an active cutscene.
+- [x] Cutscenes cleanly restore normal player control, HUD, and camera updates.
