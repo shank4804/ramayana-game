@@ -43,7 +43,7 @@
 - [x] Vite config dedupes `three` resolution to address duplicate Three.js imports.
 - [x] Vite aliases `three` and `three/addons` to one runtime path to prevent duplicate Three.js instances.
 - [x] Local hand-written `three` module declarations were removed in favor of official Three typings.
-- [ ] Rapier collision backend is blocked until `@dimforge/rapier3d-compat` can be installed; npm registry lookup fails and the offline cache does not contain an installable package body.
+- [x] Rapier collision backend installed (`@dimforge/rapier3d-compat`) and wired (see Local Integration Pass).
 
 ## Milestone 5: Ayodhya Vertical Slice
 
@@ -103,3 +103,25 @@
 - [ ] Kishkindha hub kit and palette are not started.
 - [ ] Lanka hub kit and palette are not started.
 - [ ] Hanuman playable traversal profile is deferred until Kishkindha.
+
+## Local Integration Pass (network-dependent items, done outside the Codex sandbox)
+
+These two items required network access (npm install / asset download) that the
+Codex sandbox lacked, so they were implemented and verified locally.
+
+- [x] Real Rapier physics replaces the AABB collision fallback. `initPhysics()`
+      loads the WASM during boot; `createCollisionWorld` builds a Rapier static
+      world per hub with a kinematic character controller (collide-and-slide),
+      keeping the existing `CollisionWorld` interface. A pure-JS AABB fallback
+      remains if Rapier has not initialised. Regenerated `package-lock.json`
+      (the prior lockfile had empty esbuild optional-dep versions).
+- [x] Real CC0 GLB humanoid replaces the procedural box figure. Kenney
+      "Starter Kit: 3D Platformer" character (CC0), committed at
+      `assets/runtime/characters/base_humanoid.glb` with texture references
+      stripped, preloaded at boot and cloned per character. Recoloured per
+      palette swap (torso/legs/arms), antenna hidden, code-built bow, quiver,
+      and crown attached to the torso node, and idle/walk locomotion driven by
+      a self-contained mixer ticker. The primitive figure stays as a fallback.
+- [x] Verified in-app: movement/collision/slide/containment under Rapier; the
+      recoloured GLB character renders and animates with accessories and no
+      console errors.

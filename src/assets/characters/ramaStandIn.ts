@@ -1,6 +1,8 @@
 import * as THREE from "three";
 
 import { AYODHYA_PALETTE, createFlatMaterial } from "../../render/palette";
+import { registerCharacterAnimation } from "./characterAnimation";
+import { getCharacterModel } from "./characterModel";
 
 export interface CharacterPaletteSwaps {
   primarySwap: string;
@@ -16,7 +18,109 @@ export interface RamaStandInCharacter {
   };
 }
 
+const TARGET_HEIGHT = 1.85;
+
+/**
+ * Builds a humanoid for the player, NPCs, or enemies. Uses the preloaded CC0
+ * low-poly GLB when it is available, recoloured per the supplied palette swaps
+ * with code-built bow, quiver, and crown accessories; falls back to a
+ * primitive figure if the model has not loaded (tests, contract checks).
+ */
 export function createRamaStandInCharacter(swaps: CharacterPaletteSwaps): RamaStandInCharacter {
+  const model = getCharacterModel();
+  return model ? buildModelCharacter(swaps, model.scene, model.animations) : buildProceduralCharacter(swaps);
+}
+
+function flatColor(
+  color: string,
+  options: { roughness?: number; metalness?: number } = {},
+): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    flatShading: true,
+    roughness: options.roughness ?? 0.82,
+    metalness: options.metalness ?? 0.02,
+  });
+}
+
+function buildModelCharacter(
+  swaps: CharacterPaletteSwaps,
+  source: THREE.Group,
+  animations: readonly THREE.AnimationClip[],
+): RamaStandInCharacter {
+  const character = new THREE.Group();
+  character.name = "rama-stand-in";
+
+  const body = source.clone(true);
+  const skin = swaps.skinSwap ?? AYODHYA_PALETTE.skin.hero;
+  const partMaterials: Record<string, THREE.Material> = {
+    torso: flatColor(swaps.primarySwap),
+    "leg-left": flatColor(swaps.secondarySwap),
+    "leg-right": flatColor(swaps.secondarySwap),
+    "arm-left": flatColor(skin),
+    "arm-right": flatColor(skin),
+  };
+
+  let torsoNode: THREE.Object3D = body;
+  body.traverse((child) => {
+    child.castShadow = true;
+    child.receiveShadow = true;
+
+    if (child.name === "torso") {
+      torsoNode = child;
+    }
+
+    if (child.name === "antenna") {
+      child.visible = false;
+    }
+
+    const material = partMaterials[child.name];
+    if (material && (child as THREE.Mesh).isMesh) {
+      (child as THREE.Mesh).material = material;
+    }
+  });
+
+  const bounds = new THREE.Box3().setFromObject(body);
+  const modelHeight = bounds.max.y - bounds.min.y || 1;
+  const scale = TARGET_HEIGHT / modelHeight;
+  body.scale.setScalar(scale);
+  body.position.y = -bounds.min.y * scale;
+  character.add(body);
+
+  // Accessories live under the torso node so they ride the locomotion bob.
+  // The node inherits the model's scale, so accessories built in metres are
+  // counter-scaled and positioned in the model's local (pre-scale) units.
+  const compensation = 1 / scale;
+
+  const backSocket = new THREE.Group();
+  backSocket.name = "accessory-socket-back";
+  backSocket.scale.setScalar(compensation);
+  backSocket.position.set(0, 0.2, -0.16);
+  backSocket.rotation.z = -0.16;
+  backSocket.add(createBowAccessory(), createQuiverAccessory());
+
+  const crown = new THREE.Mesh(
+    new THREE.ConeGeometry(0.16, 0.24, 7),
+    flatColor(AYODHYA_PALETTE.gold.base, { metalness: 0.12 }),
+  );
+  crown.castShadow = true;
+  crown.scale.setScalar(compensation);
+  crown.position.set(0, 0.66, 0);
+
+  torsoNode.add(backSocket, crown);
+
+  registerCharacterAnimation(body, animations);
+
+  return {
+    object: character,
+    recolorMaterial: createCharacterRecolorMaterial(swaps),
+    accessorySockets: {
+      back: backSocket,
+    },
+  };
+}
+
+function buildProceduralCharacter(swaps: CharacterPaletteSwaps): RamaStandInCharacter {
   const character = new THREE.Group();
   character.name = "rama-stand-in";
 

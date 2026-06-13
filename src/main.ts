@@ -1,6 +1,7 @@
 import "./styles.css";
 
 import { loadBootManifest } from "./assets/assetManager";
+import { preloadCharacterModel } from "./assets/characters/characterModel";
 import { createDebugFlags } from "./diagnostics/debugFlags";
 import { initPhysics } from "./physics/world";
 import { RendererApp } from "./render/app/RendererApp";
@@ -26,6 +27,9 @@ if (!isWebGL2Available()) {
 
     shell.showLoading(0.2, "Loading physics");
     await initPhysics();
+
+    shell.showLoading(0.45, "Loading characters");
+    await preloadCharacterModel();
 
     rendererApp = new RendererApp({
       host: appRoot,
