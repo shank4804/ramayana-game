@@ -9,6 +9,8 @@ export interface PlayerIntent {
   move: THREE.Vector3;
   aimPoint: THREE.Vector3;
   dashPressed: boolean;
+  attackPressed: boolean;
+  attackHeld: boolean;
 }
 
 export interface HeroMotion {

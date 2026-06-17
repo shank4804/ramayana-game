@@ -9,12 +9,17 @@ export class InputController {
   private readonly pointerNdc = new THREE.Vector2(0, 0);
   private readonly raycaster = new THREE.Raycaster();
   private dashQueued = false;
+  private attackQueued = false;
+  private attackHeld = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     canvas.addEventListener("pointermove", this.onPointerMove);
     canvas.addEventListener("pointerdown", this.onPointerMove);
+    canvas.addEventListener("pointerdown", this.onPointerDown);
+    window.addEventListener("pointerup", this.onPointerUp);
+    canvas.addEventListener("contextmenu", (event) => event.preventDefault());
   }
 
   focus() {
@@ -41,9 +46,12 @@ export class InputController {
       move,
       aimPoint: this.aimPoint.clone(),
       dashPressed: this.dashQueued,
+      attackPressed: this.attackQueued,
+      attackHeld: this.attackHeld,
     };
 
     this.dashQueued = false;
+    this.attackQueued = false;
     return intent;
   }
 
@@ -72,5 +80,19 @@ export class InputController {
     const y = (event.clientY - rect.top) / Math.max(rect.height, 1);
 
     this.pointerNdc.set(x * 2 - 1, -(y * 2 - 1));
+  };
+
+  private readonly onPointerDown = (event: PointerEvent) => {
+    if (event.button === 0) {
+      this.attackQueued = true;
+      this.attackHeld = true;
+      this.canvas.setPointerCapture(event.pointerId);
+    }
+  };
+
+  private readonly onPointerUp = (event: PointerEvent) => {
+    if (event.button === 0) {
+      this.attackHeld = false;
+    }
   };
 }

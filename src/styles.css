@@ -88,3 +88,19 @@ body {
   outline: 3px solid #7da4ff;
   outline-offset: 3px;
 }
+
+.damage-number {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  color: #ffe8b2;
+  font-size: 1rem;
+  font-weight: 900;
+  pointer-events: none;
+  text-shadow:
+    0 0 8px rgb(255 64 42 / 65%),
+    0 2px 2px rgb(0 0 0 / 80%);
+  translate: -50% -50%;
+  will-change: transform, opacity;
+}
