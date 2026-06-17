@@ -1,370 +1,77 @@
-# Ramayana Three.js Rebuild Plan
+# Ramayana ARPG — Diablo 4-style Rebuild Plan
 
-## Summary
+## Context
 
-Rebuild the project from scratch as a high-quality Three.js third-person action-adventure. The target is a story-gated open world, closer to a scoped Assassin's Creed or GTA-style campaign than a linear prototype: explorable hubs, side quests, cinematic cutscenes, character switching, and strong visual presentation.
+The previous build was a third-person/low-poly exploration prototype whose first-minute UX was poor (stacked cutscenes that locked control, no onboarding, enemies ambushing at spawn, unresponsive camera-relative movement). The decision is to **discard it entirely and rebuild from scratch** as a **Diablo 4-style isometric action RPG** set in the Ramayana: play as Rama fighting hordes of rakshasas with divine abilities, in a dark-mythic tone.
 
-The art direction is an "A Short Hike"-style low-poly diorama: flat-shaded geometry, a warm region palette, and a signature pixelation filter that unifies everything into an intentional, charming look. This direction was chosen deliberately so that v1 requires no asset generation pipeline — almost everything is built procedurally in code, with a small set of CC0 rigged character models as the only external files.
+The old game code, assets, and design docs are intentionally thrown away. Git history preserves the old work (commit `74cc29a`); nothing needs to be migrated. This plan is the only design artifact going forward.
 
-The guiding production rule is simple: the first playable version must look like an intentional, cohesive low-poly game — a warm diorama, not unstyled programmer primitives. The style is cheap to produce but must never look careless.
+Locked decisions:
+- **Genre/feel:** isometric ARPG, dark-mythic Ramayana.
+- **Controls:** WASD movement + mouse-aim. Left-click basic attack toward the cursor; skills on `1`–`4` and right-click; immediate, twin-stick-like feel (no click-to-move pathfinding).
+- **v1 scope:** one polished arena combat slice — single zone, Rama as the only hero, 3–4 abilities, waves of rakshasas plus one boss, health/XP, floating damage numbers, death/respawn. No loot tables, skill trees, or multiple zones in v1.
+- **Theme:** Ramayana (Rama vs rakshasas, divine weapons), Diablo's genre and gritty presentation.
 
-## Core Direction
+The guiding rule: **the first 30 seconds must be fun.** You click Play and within seconds you are moving and fighting. No forced cutscenes, no control locks, no onboarding wall.
 
-- Build the game with Vite, TypeScript, and Three.js.
-- Use `WebGLRenderer` for v1. Treat `WebGPURenderer`/TSL as a possible future migration, not a v1 target.
-- Pin Three.js and Rapier versions in `package.json` and upgrade deliberately, not automatically.
-- Use Rapier for physics, traversal collision, grounded third-person movement, triggers, and combat hit volumes.
-- Use `@dimforge/rapier3d-compat` (WASM inlined) to avoid bundler WASM-loading friction.
-- Keep the existing `EffectComposer` post pipeline; the pixelation pass is its centerpiece, with ACES tone mapping retained.
-- Target desktop-first input: keyboard/mouse and gamepad. Mobile/touch is explicitly out of scope for v1.
-- Build environments, props, weapons, and VFX procedurally in code: primitive assemblies, lathe/extrude geometry, vertex colors, and instancing. No downloaded environment assets.
-- Use a small set of CC0 rigged character GLBs (Quaternius) as the only external asset files, committed to the repo, given Ramayana identity in code via material recoloring and bone-attached accessories.
-- Make the first production milestone a polished Ayodhya look-dev courtyard built from procedural kits, with one recolored animated character standing in for Rama.
+## Tech Stack (reused toolchain, new game)
+
+- Vite + TypeScript + Three.js (`WebGLRenderer`), Rapier (`@dimforge/rapier3d-compat`) for movement, hit volumes, and AoE queries. These deps and the build config are already present and stay.
+- Drop the pixelation post pipeline. The ARPG look is **dark-mythic**: ACES tone mapping, bloom, vignette, atmospheric fog, dramatic key/rim lighting, ember particles — not pixelated, not warm-cozy.
+- Reuse the CC0 GLB character approach (load + recolor + clone per entity) for the hero and enemies; isometric distance hides detail, so low-poly reads well.
+
+## Camera & Controls
+
+- **Camera:** fixed isometric framing — high pitch (~50°), follows the hero from above with a small look-ahead toward the cursor. Optional slight rotate later; v1 is fixed angle. No collision-orbit complexity.
+- **Movement:** WASD in screen/world space (not camera-relative-confusing), Rapier kinematic character controller, snappy acceleration. The hero **faces the mouse cursor** at all times (aim).
+- **Combat input:** left-click = basic attack toward cursor; `1`–`4` and right-click = abilities with cooldowns; `Space` = dash/dodge (i-frames). Holding left-click auto-repeats the basic attack.
+- Everything is responsive from frame one. No state that silently disables input.
+
+## Core Loop (v1 arena slice)
+
+1. Title screen → **Play** → you spawn in the arena, immediately in control.
+2. Move with WASD, aim with the mouse, kill rakshasas that spawn in waves.
+3. Basic attack + 3–4 cooldown abilities (e.g. arrow volley, fire-arrow AoE, divine dash, ground slam). Kills grant XP; level-ups bump stats.
+4. Enemies drop small health orbs (the only "loot" in v1).
+5. After N waves, a **boss** (a rakshasa lord) spawns. Defeat it → victory screen.
+6. Death → death screen → restart the arena. Fast retry loop.
+
+## Architecture (simulation owns truth; Three.js objects are views)
+
+- `engine`: renderer, isometric camera rig, lighting, post (bloom/vignette/fog), resize, fixed-timestep update + render loop.
+- `physics`: Rapier world, hero kinematic controller, enemy bodies, melee/AoE/projectile hit queries.
+- `input`: pointer + keyboard → an intent struct (moveDir, aimPoint, attack, skill1–4, dash).
+- `game` (simulation, the tested core): hero state & stats, ability definitions + cooldowns, enemy AI (seek/attack), wave spawner, damage resolution, XP/leveling, health-orb pickups, run state machine (playing / dead / victory).
+- `entities`: hero, rakshasa types, boss, projectiles, pickups — data + a thin view adapter binding to a Three.js object.
+- `vfx`: hit sparks, ability effects, floating damage numbers, enemy death dissolve, screen shake.
+- `ui`: HUD (health orb, skill bar with cooldown sweeps, XP bar, wave counter), title, death, victory screens.
+- `assets`: GLB load + recolor + clone; audio (CC0).
+
+Keep files small and single-purpose. Unit-test the `game` simulation (damage, cooldowns, wave/XP/level transitions, run-state). Renderer/feel stay under manual runtime review.
 
 ## Art Direction
 
-The game must look intentional and charming from the first playable slice.
-
-- Low-poly, flat-shaded geometry (`flatShading: true` or faceted normals) with vertex colors or single flat-color materials. No PBR texture maps.
-- Signature pixelation pass: render the scene into a low-resolution render target with nearest-neighbor filtering and upscale to the canvas, integrated into the existing `EffectComposer`. No anti-aliasing inside the low-res target.
-- Default to a fine pixel size ("tiny and sharp") so combat and bow aiming stay readable; expose pixel size as a player-facing setting, from fine to "big and crunchy".
-- Warm color palette sampled from reference photographs of Indian temple and palace architecture: sandstone, gold, saffron, teal, cream. One palette module per region so Ayodhya, Forest Exile, Kishkindha, and Lanka feel visually distinct.
-- Gradient sky shader instead of HDRI files. Directional sun plus ambient light, soft shadows, atmospheric fog.
-- Keep ACES tone mapping. Bloom and other effects are optional and must never reduce combat readability.
-- Stylized primitive-built construction is the art style, not a placeholder. There is no "no primitives" rule; the quality bar is "intentional diorama charm", judged by screenshot review against region reference photos.
-- Soft object outlines are a possible later enhancement for readability at low resolution; not required for v1.
-
-### Performance And Payload Budgets
-
-- Frame rate: 60 FPS on a mid-tier laptop (M1 MacBook Air / GTX 1650 class) at 1080p. The pixelation pass renders the scene at reduced resolution, which makes this budget easy to hold.
-- Initial payload: under 10 MB before the title screen is interactive (code + a few character GLBs).
-- Loading time: Ayodhya hub playable in under 5 seconds on a 50 Mbps connection.
-- Scene budgets: lean on instancing for repeated kit pieces; treat draw-call spikes as optimization tasks.
-
-## Asset Strategy
-
-Everything is procedural in code except characters.
-
-### Procedural in code (no external files)
-
-- Terrain: heightmap-displaced plane with vertex-color banding (sand, grass, stone).
-- Nature kit: trees (cones/icosahedrons on cylinder trunks), rocks, shrubs, flowers — randomized scale and jitter, instanced.
-- Ayodhya architecture kit: modular walls, arches, columns, stairs, gates, balconies from boxes, cylinders, and lathe geometry. Built once as reusable code modules, instanced across the district.
-- Props: pots, carts, market stalls, lamps, braziers, crates, rugs, banners (a waving plane via vertex shader).
-- Weapons and VFX: bow, arrows, swords, gada, sword trails, hit sparks — primitive assemblies and particle systems.
-- Each kit lives in `src/world/kits/` as a focused module with a small typed API.
-
-### Characters: CC0 rigged GLBs
-
-- Source: Quaternius rigged character packs and the Universal Animation Library (CC0). No license friction, no Blender step required.
-- Commit the GLB files directly to the repo under `assets/runtime/characters/`.
-- Give characters Ramayana identity in code at load time:
-  - Material recolor system (roughly 20 lines per character): warm skin tones, saffron/gold dhoti color blocks for Rama, royal red/teal for Dasharatha, ash-grey for rakshasas.
-  - Accessory attachment to bones: bow and quiver on Rama's back, crown for Dasharatha, jewelry as small gold torus/sphere primitives, sheathed sword. Accessories are code-built primitives.
-- Hanuman is deferred to the Kishkindha milestone; he does not appear in the Ayodhya slice. When he arrives, start from a recolored humanoid base with a code-built tail and stylized head, or revisit then.
-- Attribution: a single `CREDITS.md` at the repo root listing CC0 sources (Quaternius, any audio sources) as a courtesy, surfaced later as an in-game credits screen. No provenance metadata apparatus.
-
-## Character Plan
-
-### Rama
-
-- One Quaternius humanoid base, recolored: warm skin, saffron/gold dhoti, simple ornament accents.
-- Code-built bow, quiver, and sword attached to skeleton bones; arrow spawn point on the bow.
-- Animation clips from the CC0 animation library: idle, walk, run, sprint, dodge, two attacks, bow aim, bow fire, hit reaction, death, interact.
-- Readable heroic silhouette at third-person distance is the bar; the pixel filter and palette carry the rest.
-
-### Lakshmana
-
-- Same base mesh family, different palette (distinct sash/clothing colors), faster attack timing.
-- Shares the locomotion clip set.
-
-### Sita
-
-- Cinematic/NPC only in early milestones: idle, walk, conversation, and emotional poses from the shared clip library.
-- Distinct palette and jewelry accessories.
-
-### Dasharatha
-
-- Older royal NPC: recolored base, code-built crown, court idle/talk/sit gestures.
-
-### Ravana
-
-- Not attempted in the Ayodhya slice. Introduce through cinematic framing, shadow, statue, or mural first. The ten-headed silhouette is a special model/rig problem for a later milestone.
-
-## Environment Plan
-
-Each region is a procedural kit plus a palette module. The category lists below are kit checklists, not shopping lists.
-
-### Ayodhya
-
-Kit pieces: palace exterior masses, throne hall, modular sandstone walls, columns, arches, stairs, balconies, city gates, street/courtyard floors, market stalls, banners, lamps/braziers, trees and planters, carts/crates/jars, benches/rugs, background skyline silhouettes.
-
-Visual direction: warm sandstone, gold accents, saffron/red/teal/cream fabric accents, strong sunlit courtyards, soft haze, high navigation readability.
-
-### Forest Exile
-
-Kit pieces: dense trees, shrubs, rocks/cliffs, hermitage huts, river/pond planes, campfire, path markers, encounter arenas.
-
-Visual direction: greener, cooler, quieter than Ayodhya; light shafts, mist, warm camp areas against darker forest.
-
-### Kishkindha
-
-Kit pieces: rock formations, cave entrances, cliff paths, ruins, vanara settlement pieces, elevated platforms, banners.
-
-Visual direction: verticality, golden rock, dusty air, high traversal readability for Hanuman.
-
-### Lanka
-
-Kit pieces: fortress walls, dark palace masses, volcanic/ocean terrain, bridges, battlements, demon banners, fire bowls, throne set pieces.
-
-Visual direction: black stone, bronze, red cloth, firelight; harsher silhouettes and a more oppressive atmosphere than Ayodhya.
-
-## Animation Strategy
-
-- Use the CC0 Universal Animation Library clips as the base set for all humanoids.
-- Keep gameplay movement code-driven; clips are visual, the controller is truth.
-- Keep clip names stable (`idle_loop`, `walk_loop`, `run_loop`, `attack_01`, `bow_aim_loop`, `bow_fire`, `hit_front`, `death_01`).
-- Use animation events or timeline markers for attack hit frames, footstep sounds, arrow release, and cinematic cues.
-- Accessories attached to bones must follow animation without detaching; verify per character in the dev scene.
-
-## Audio Strategy
-
-Audio is part of the presentation bar, not a polish afterthought.
-
-- Categories: music, ambience, SFX, UI sounds, and (deferred) voice-over. Dialogue is subtitles-only for the first slice.
-- Sourcing: CC0 sources (Freesound CC0, Kenney audio, Sonniss GDC packs); record each source in `CREDITS.md`.
-- Tech: decide once between `THREE.AudioListener`/`PositionalAudio` and Howler, and document the decision.
-- First audio pass ships with the Ayodhya vertical slice: region ambience, footsteps, UI feedback, and one music bed.
-- Drive footsteps, attack impacts, and arrow release from the same animation events used for gameplay timing.
-- Respect browser autoplay policies: audio starts after first user interaction.
-
-## Asset Manifest And Loading
-
-The manifest now covers only the handful of character GLBs (and later audio files).
-
-```ts
-export interface AssetManifestEntry {
-  id: string;
-  kind: "character" | "animation" | "audio";
-  url: string;
-  scale: number;
-  animationClips?: string[];
-  preloadGroup?: "boot" | "ayodhya" | "forest" | "kishkindha" | "lanka";
-}
-```
-
-Runtime loader requirements:
-
-- Central `AssetManager` with manifest-driven loading, progress reporting, and a cache.
-- Three.js `GLTFLoader` only; no KTX2/Draco/Meshopt decoders.
-- Missing playable-character model blocks gameplay boot with a clear error; missing optional asset logs a warning and continues.
-
-## Deployment
-
-- Host the game build on a static host (Cloudflare Pages, Vercel, or itch.io HTML5).
-- Total asset weight is a few megabytes, so no CDN/object-store split is needed for v1.
-- Verify the host serves correct MIME types for `.glb` and `.wasm`.
-
-## World And Story Structure
-
-The game is not one enormous unrestricted map. It is a sequence of restricted open-world hubs unlocked by the Ramayana story.
-
-- Each major kanda or story phase becomes an explorable hub.
-- Hubs contain main quests, side quests, NPCs, collectibles, lore, combat encounters, and cinematic story transitions.
-- Story progress controls region access, playable character, and available side content.
-- Cutscenes remain central and should be in-engine whenever possible.
-
-Primary hubs:
-
-- Ayodhya: palace, court, city streets, royal family, early Rama story, exile setup.
-- Forest Exile: wilderness, sages, camp scenes, rakshasa threats, Sita/Rama/Lakshmana story.
-- Kishkindha: rocky kingdom, Sugriva and Hanuman alliance, traversal-heavy quests.
-- Lanka: infiltration, warfront, palace assault, Ravana finale.
-
-## Playable Characters
-
-- Rama: main hero, balanced movement, sword, bow, dodge, and dharma-based special ability.
-- Lakshmana: faster and more aggressive, used for selected combat-focused sections.
-- Hanuman: traversal-focused, with leaps, climbing or vertical movement, heavy strikes, and Lanka infiltration gameplay.
-- Dasharatha: short prologue or social/story control only, used to establish Ayodhya and the emotional stakes.
-
-## Technical Architecture
-
-Use clean subsystem boundaries from the start.
-
-- `simulation`: story state, quests, combat rules, entities, progression, save data.
-- `render`: Three.js renderer, scene graph, camera, lighting, post-processing (including the pixelation pass), palettes, flat-material helpers.
-- `physics`: Rapier world, character controller, colliders, triggers, hit detection.
-- `cinematics`: timeline camera tracks, subtitles, actor blocking, skip/advance behavior.
-- `world`: hub definitions, gates, spawn points, NPC placement, side quests, procedural kits (`world/kits/`).
-- `assets`: manifest-driven loading of character GLBs, animation clip mapping, recolor and accessory-attachment helpers.
-- `ui`: title screen, HUD, quest tracker, map, journal, pause menu, settings (including pixel size).
-- `diagnostics`: debug overlays, performance stats, collision visualization, screenshot hooks.
-
-The simulation owns game truth. Three.js objects are visual adapters, not the source of quest or combat state.
-
-## Key Data Models
-
-- `StoryChapter`: id, kanda, region, playable character, missions, intro cutscene, exit conditions.
-- `WorldRegion`: id, spawn points, gates, colliders, NPCs, side quests, palette/lighting preset.
-- `PlayableCharacter`: movement profile, camera profile, combat kit, abilities, animation set.
-- `Quest`: id, type, giver, objectives, rewards, required story state.
-- `CutsceneTimeline`: shots, actors, camera tracks, subtitles, triggers, skip behavior.
-- `DialogueTree`: id, speaker, lines, choices, conditions, triggers; quest givers, NPC barks, and cutscene subtitles all reference dialogue entries rather than embedding raw strings.
-- `SaveGame`: story progress, region state, character state, quests, settings, checkpoint. Persist to IndexedDB with a versioned schema and an explicit migration policy for older saves.
-- `AssetManifestEntry`: asset id, kind, runtime URL, scale, animation clips, preload group.
-- `CollisionProxy`: id, shape type, transform, size, physics layer, gameplay tags. Kit modules emit collision proxies alongside render meshes.
-- `AnimationClipMap`: canonical gameplay state to clip names.
-
-## Build Milestones
-
-Scope honesty: four hubs, four playable characters, and full cinematics is multi-year scope for a small team. Success for this plan is defined as Milestones 1–6 — the Ayodhya vertical slice plus combat and cinematics. Milestone 7 is re-planned only after the slice ships at quality.
-
-### 1. Clean Technical Reboot — done
-
-- Fresh Vite + TypeScript + Three.js app with title screen, loading screen, renderer, resize handling, and a WebGL2-required error page.
-- Minimal scene validating renderer, lighting, asset loading, and post-processing.
-- Initial `assets/` and `src/` subsystem structure.
-
-### 2. Visual Style Foundation
-
-- Add the pixelation pass to the existing `EffectComposer`: low-res render target, nearest-neighbor upscale, fine default, player-facing pixel-size setting.
-- Add `src/render/palette.ts` with the Ayodhya palette and flat-shaded material helpers.
-- Add the gradient sky shader; tune sun, ambient, shadows, and fog against the palette.
-
-Acceptance:
-
-- Boot scene renders through the pixelation pass with no console errors.
-- Pixel-size setting visibly changes crunchiness without breaking UI rendering.
-- A test arrangement of flat-shaded primitives under the palette reads as a deliberate style.
-
-### 3. Procedural Kits And Look-Dev Courtyard
-
-- Build `src/world/kits/`: nature kit (trees, rocks, shrubs) and first Ayodhya architecture pieces (wall, column, arch, gate) with instancing helpers.
-- Build a small Ayodhya look-dev courtyard from the kits.
-- Download one Quaternius rigged character plus the animation library, commit the GLBs, load via `AssetManager`, recolor as a Rama stand-in, attach a code-built bow and quiver to bones.
-- Add `CREDITS.md`.
-- Parallel track: controller, camera, and physics work (Milestone 4) may proceed at the same time.
-
-Acceptance:
-
-- Courtyard screenshot review reads as an intentional warm low-poly diorama (sandstone/gold/saffron), not unstyled primitives.
-- The recolored character idles in the courtyard with accessories following the animation.
-- `npm run build` and `npx tsc --noEmit` pass.
-
-### 4. Third-Person Rama Slice
-
-- Animated Rama with idle, walk, run, dodge, attack, bow aim, bow fire, hit reaction, death, and interact clips.
-- Weapon attachment points for bow, quiver, sword, and arrow spawn.
-- GTA-like third-person camera with orbit, chase, shoulder aim, collision avoidance, and mouse/gamepad input mapping.
-- Movement, sprint, dodge, interaction prompts, and Rapier collision.
-- Minimal HUD: health, objective, interaction prompt, transient notifications.
-- Gameplay controller uses collision proxies, not render meshes.
-
-Acceptance:
-
-- Movement and camera feel good enough to explore a hub.
-- Weapon props stay attached correctly through locomotion and aim.
-- Bow aiming stays readable through the pixelation pass at the default setting.
-
-### 5. Ayodhya Vertical Slice
-
-- Build the explorable Ayodhya district from the architecture kit: palace, streets, gates, NPCs, props, foliage, ambient life.
-- Collision proxies for buildings, gates, walls, trees, stairs, ramps, and market stalls (emitted by kit modules).
-- Dasharatha prologue cutscene and transition to Rama gameplay.
-- One main quest and one side quest.
-- Story gates that keep the player inside Ayodhya until the exile story beat; visually motivated, not invisible walls, whenever possible.
-- First audio pass: region ambience, footsteps, UI feedback, one music bed.
-
-Acceptance:
-
-- Ayodhya looks like an intentional place with district-scale layout.
-- The player can navigate without snagging on kit geometry.
-
-### 6. Combat And Cinematics
-
-- Sword combo, bow aim/fire, dodge timing, enemy hit reactions, and simple lock-on for focused fights.
-- One rakshasa enemy type and one human guard or sparring enemy type (recolored bases).
-- Data-driven cutscene timelines with camera rails, subtitles, actor placement, skip, and line advance.
-- Cutscenes return cleanly to gameplay state; frame shots to flatter the low-poly style (pulled-back, silhouette-driven compositions rather than close-ups).
-
-Acceptance:
-
-- Combat uses animated hero and enemy models.
-- Attack hit frames align with animation timing.
-- Cutscenes read clearly through the pixelation pass.
-
-### 7. Kanda Expansion
-
-- Add Forest Exile, Kishkindha, and Lanka hubs one at a time: each is a new procedural kit plus palette module.
-- Introduce Lakshmana and Hanuman with distinct movement and combat profiles.
-- Story-gated travel between hubs; side quests after each hub's main quest path works.
-
-Acceptance:
-
-- Each region has a distinct palette, silhouette language, and kit identity.
-- New hubs do not regress visual quality below Ayodhya.
-
-### 8. Polish And Performance
-
-- Tune palettes, lighting, and fog per region; refine weak kit pieces.
-- Save slots, pause menu, map, quest journal, settings, audio hooks.
-- Optimize draw calls (instancing), shadows, culling, and loading.
-- Visual QA passes for clipping, foot sliding, accessory attachment, NPC scale, and draw-call spikes.
-
-Acceptance:
-
-- Desktop browser performance holds 60 FPS.
-- Visual quality remains strong after optimization.
-
-## Testing And Acceptance
-
-### Code Tests And CI
-
-The simulation owns game truth, so it is the tested core.
-
-- Unit tests (Vitest) for `simulation`: quest state transitions, story gates, combat rules, progression, and save/load round-trips.
-- Unit tests for kit modules where practical: deterministic geometry counts, collision proxy emission.
-- CI on every push: typecheck, lint, unit tests.
-- Playwright smoke test: the game boots to the title screen with no console errors.
-- Renderer, physics feel, and animation quality stay under manual/visual review.
-
-### Asset Tests
-
-- Every committed character GLB loads through `GLTFLoader` and exposes its expected animation clips.
-- Recolor and accessory-attachment helpers are unit-testable against a loaded character.
-- `CREDITS.md` lists every external source in the repo.
-
-### Runtime Tests
-
-- Boot/title screen renders with no WebGL errors.
-- Ayodhya loads; Rama movement, camera, collision, and interaction prompts work.
-- Main quest, side quest, cutscene, and story transition work.
-- Combat works with animated hero and enemy models.
-- Save/load restores chapter, hub, mission, character, quest state, and settings.
-- Pixel-size setting persists and applies across sessions.
-
-### Visual Review Tests
-
-- Capture screenshots at: title/menu, Rama idle in Ayodhya, a street, palace courtyard, market, combat encounter, cutscene shot.
-- Review for: diorama charm, silhouette readability, palette cohesion, scale consistency, cultural specificity judged against region reference photos, accessory attachment, UI obstruction.
-
-## First Implementation Target
-
-The first implementation should not attempt the full Ramayana. It should deliver:
-
-- the pixelation pass and palette (the visual identity),
-- procedural nature and architecture kits,
-- an Ayodhya look-dev courtyard,
-- one recolored CC0 character with code-built accessories,
-- then the third-person Rama slice and the Ayodhya vertical slice on top.
-
-Once Ayodhya works at the target quality, expand to the Forest Exile hub.
+- Dark-mythic: black/charcoal stone arena, warm ember and torch light, cool moonlit ambient, fog rolling at the edges, bloom on divine VFX and fire.
+- Hero (Rama): recolored CC0 humanoid — saffron/gold with a divine-blue rim light, bow/sword. Reads as heroic against the dark ground.
+- Rakshasas: recolored humanoids — ash-grey/black skin, red accents, horns (code-built), glowing eyes. Boss is larger with a distinct silhouette.
+- VFX carry the game feel: readable telegraphs, punchy hit flashes, satisfying ability effects. Combat readability beats effect density.
+
+## Build Milestones (Codex implements; each is runtime-verified before the next)
+
+1. **Nuke + scaffold.** Delete all old game code, assets, and design docs (`src/**`, `assets/**` game content, `docs/art-progress.md`, `CREDITS.md`; keep `plan.md`, `package.json`/lockfile, `tsconfig.json`, `vite.config.ts`, `index.html` shell, `.git`). Fresh app: isometric camera, dark-lit ground plane, one placeholder hero, render loop, title→Play→arena flow. Acceptance: boots to a dark arena with the hero visible, no console errors.
+2. **Hero control & feel.** WASD movement via Rapier kinematic controller, mouse-aim facing, camera follow, recolored GLB hero with idle/run animation, dash on Space. Acceptance: movement feels immediate and responsive; hero faces the cursor; camera tracks cleanly.
+3. **Basic combat.** Left-click attack toward cursor, one chasing rakshasa, Rapier hit detection, floating damage numbers, enemy hit reaction + death. Acceptance: you can move and kill an enemy; hits feel responsive and readable.
+4. **ARPG systems.** Health orb HUD + XP bar + level-ups, 3–4 abilities with cooldowns and a skill bar (icons + cooldown sweep), dash i-frames, death→death-screen→restart. Acceptance: full moment-to-moment ARPG HUD works; abilities fire on cooldown.
+5. **Waves + boss + orbs.** Wave spawner with rising counts, health-orb drops, a boss fight after the final wave, victory screen. Acceptance: a full run is playable start→waves→boss→victory, and death→restart works.
+6. **Feel & art pass.** Dark-mythic lighting, bloom/vignette/fog, ability + hit VFX, screen shake + knockback, enemy telegraphs, CC0 audio (music bed, hits, abilities, UI). Acceptance: looks and feels like a real ARPG slice; the first 30 seconds are fun.
+
+## Verification
+
+Per milestone, drive the running app (Playwright via the webapp-testing skill against `npm run dev` on a spare port): confirm input→movement→combat behavior, read HUD state, capture screenshots, confirm no console errors. The simulation gets Vitest unit tests (damage, cooldowns, waves, XP). The bar for "done" is runtime behavior, not just typecheck/build.
 
 ## Assumptions
 
-- The game prioritizes an intentional low-poly diorama aesthetic over realism; the pixelation filter is the unifying visual device.
-- Procedural code-built geometry is the default visual path; CC0 rigged characters are the only external 3D files in v1.
-- Custom or higher-fidelity character art (especially Hanuman and Ravana) is a post-v1 decision.
-- Combat scope is unchanged from the original action-adventure vision.
-- The project uses CC0 assets only, so license tracking reduces to a courtesy `CREDITS.md`.
+- Ramayana theme is retained; only the genre/feel changes to Diablo-style ARPG.
+- CC0 assets only (characters, audio); attribution in a regenerated `CREDITS.md`.
+- Desktop browser, keyboard + mouse; mobile/touch out of scope for v1.
+- Loot tables, skill trees, multiple zones, and additional heroes are explicitly post-v1.
