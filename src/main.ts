@@ -1,52 +1,13 @@
 import "./styles.css";
+import { createGameApp } from "./game/createGameApp";
 
-import { loadBootManifest } from "./assets/assetManager";
-import { preloadCharacterModel } from "./assets/characters/characterModel";
-import { createDebugFlags } from "./diagnostics/debugFlags";
-import { initPhysics } from "./physics/world";
-import { RendererApp } from "./render/app/RendererApp";
-import { getWebGL2SupportMessage, isWebGL2Available } from "./render/app/webglSupport";
-import { createAppShell } from "./ui/appShell";
+const root = document.querySelector<HTMLDivElement>("#app");
 
-const appRoot = document.querySelector<HTMLDivElement>("#app");
-
-if (!appRoot) {
+if (!root) {
   throw new Error("Missing #app root element.");
 }
 
-const shell = createAppShell(appRoot);
+root.textContent = "Loading...";
 
-if (!isWebGL2Available()) {
-  shell.showError(getWebGL2SupportMessage());
-} else {
-  const debugFlags = createDebugFlags(new URLSearchParams(window.location.search));
-  let rendererApp: RendererApp | null = null;
-
-  shell.showTitle(async () => {
-    shell.showLoading(0, "Preparing renderer");
-
-    shell.showLoading(0.2, "Loading physics");
-    await initPhysics();
-
-    shell.showLoading(0.45, "Loading characters");
-    await preloadCharacterModel();
-
-    rendererApp = new RendererApp({
-      host: appRoot,
-      debugFlags,
-    });
-
-    shell.showLoading(0.35, "Loading boot manifest");
-    await loadBootManifest();
-
-    shell.showLoading(0.75, "Composing scene");
-    rendererApp.start();
-
-    shell.showLoading(1, "Ready");
-    shell.showGame();
-  });
-
-  window.addEventListener("beforeunload", () => {
-    rendererApp?.dispose();
-  });
-}
+const app = await createGameApp(root);
+app.start();
